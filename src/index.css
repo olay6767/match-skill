@@ -1,34 +1,31 @@
-:root {
-  font-family: Arial, Helvetica, sans-serif;
-  color: #172037;
-  background: #fff8ee;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@import "tailwindcss";
 
-html {
-  min-width: 320px;
-  background: #fff8ee;
-}
+@layer base {
+  :root {
+    @apply font-sans text-[#172037] antialiased;
+    background: #fff8ee;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
 
-body {
-  min-width: 320px;
-  min-height: 100svh;
-  margin: 0;
-}
+  html {
+    @apply min-w-[320px] bg-[#fff8ee];
+  }
 
-button,
-input {
-  font-family: inherit;
-}
+  body {
+    @apply m-0 min-h-svh min-w-[320px];
+  }
 
-button {
-  -webkit-tap-highlight-color: transparent;
-}
+  button,
+  input {
+    font-family: inherit;
+  }
 
-::selection {
-  color: #fff;
-  background: #ff7517;
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    @apply bg-[#ff7517] text-white;
+  }
 }

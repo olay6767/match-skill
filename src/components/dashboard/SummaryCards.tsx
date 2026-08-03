@@ -1,3 +1,5 @@
+import MetricCard from './MetricCard'
+
 const metrics = [
   {
     icon: '▣',
@@ -37,16 +39,7 @@ function SummaryCards() {
   return (
     <section className="metrics-grid" aria-label="Summary metrics">
       {metrics.map((metric) => (
-        <article className="metric-card" key={metric.label}>
-          <div className="metric-card__top">
-            <span className={`metric-icon metric-icon--${metric.tone}`} aria-hidden="true">
-              {metric.icon}
-            </span>
-            <span className={metric.metaClass}>{metric.meta}</span>
-          </div>
-          <p>{metric.label}</p>
-          <strong>{metric.value}</strong>
-        </article>
+        <MetricCard key={metric.label} {...metric} />
       ))}
     </section>
   )

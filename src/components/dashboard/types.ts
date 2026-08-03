@@ -1,5 +1,7 @@
 export type ActivityStatus = 'processing' | 'completed' | 'draft' | 'open'
 
+export type ActivityFilter = 'all' | 'processing' | 'completed'
+
 export type Activity = {
   name: string
   detail: string

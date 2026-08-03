@@ -1,3 +1,4 @@
+import Button from '../ui/Button'
 import type { DemoAction } from './types'
 
 type DashboardSidebarProps = {
@@ -23,26 +24,25 @@ function DashboardSidebar({ adminEmail, onLogout, onDemoAction }: DashboardSideb
       </div>
 
       <nav className="sidebar-nav" aria-label="Admin navigation">
-        <button className="sidebar-link sidebar-link--active" type="button">
+        <Button className="sidebar-link sidebar-link--active">
           <span aria-hidden="true">▦</span> Dashboard
-        </button>
+        </Button>
         {navigationItems.map(([icon, label]) => (
-          <button
+          <Button
             className="sidebar-link"
-            type="button"
             key={label}
             onClick={() => onDemoAction(label)}
           >
             <span aria-hidden="true">{icon}</span> {label}
-          </button>
+          </Button>
         ))}
       </nav>
 
       <div className="sidebar-account">
         <span>{adminEmail}</span>
-        <button type="button" onClick={onLogout}>
+        <Button onClick={onLogout}>
           <span aria-hidden="true">↪</span> Logout
-        </button>
+        </Button>
       </div>
     </aside>
   )

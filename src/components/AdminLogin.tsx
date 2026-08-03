@@ -1,4 +1,8 @@
 import { useState, type FormEvent } from 'react'
+import Button from './ui/Button'
+import Card from './ui/Card'
+import IconButton from './ui/IconButton'
+import TextField from './ui/TextField'
 import '../App.css'
 
 type AdminLoginProps = {
@@ -63,7 +67,7 @@ function AdminLogin({ onLogin }: AdminLoginProps) {
 
   return (
     <main className="admin-shell">
-      <section className="admin-card" aria-label="SEDA Skill Analytics admin portal">
+      <Card as="section" className="admin-card" aria-label="SEDA Skill Analytics admin portal">
         <header className="admin-header">
           <a className="seda-logo" href="#" aria-label="SEDA home">
             <img src="/seda-logo.png" alt="SEDA" />
@@ -74,57 +78,46 @@ function AdminLogin({ onLogin }: AdminLoginProps) {
 
         <div className="admin-body">
           <form className="admin-form" onSubmit={handleSubmit} noValidate>
-            <div className="field-group">
-              <label htmlFor="email">Username / Email</label>
-              <div className="input-wrap">
-                <span className="field-icon field-icon--user" aria-hidden="true" />
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="username"
-                  placeholder="Enter your username"
-                  value={email}
-                  onChange={(event) => {
-                    setEmail(event.target.value)
-                    if (errors.email) setErrors({ ...errors, email: undefined })
-                  }}
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={errors.email ? 'email-error' : undefined}
-                />
-              </div>
-              {errors.email && <p className="field-error" id="email-error">{errors.email}</p>}
-            </div>
+            <TextField
+              id="email"
+              label="Username / Email"
+              name="email"
+              type="email"
+              autoComplete="username"
+              placeholder="Enter your username"
+              value={email}
+              error={errors.email}
+              iconClassName="field-icon--user"
+              onChange={(event) => {
+                setEmail(event.target.value)
+                if (errors.email) setErrors({ ...errors, email: undefined })
+              }}
+            />
 
-            <div className="field-group">
-              <label htmlFor="password">Password</label>
-              <div className="input-wrap">
-                <span className="field-icon field-icon--lock" aria-hidden="true" />
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(event) => {
-                    setPassword(event.target.value)
-                    if (errors.password) setErrors({ ...errors, password: undefined })
-                  }}
-                  aria-invalid={Boolean(errors.password)}
-                  aria-describedby={errors.password ? 'password-error' : undefined}
-                />
-                <button
+            <TextField
+              id="password"
+              label="Password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              value={password}
+              error={errors.password}
+              iconClassName="field-icon--lock"
+              onChange={(event) => {
+                setPassword(event.target.value)
+                if (errors.password) setErrors({ ...errors, password: undefined })
+              }}
+              endAdornment={(
+                <IconButton
                   className="show-password"
-                  type="button"
                   onClick={() => setShowPassword((current) => !current)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   <span className="field-icon field-icon--eye" aria-hidden="true" />
-                </button>
-              </div>
-              {errors.password && <p className="field-error" id="password-error">{errors.password}</p>}
-            </div>
+                </IconButton>
+              )}
+            />
 
             <div className="form-options">
               <label className="remember-row">
@@ -135,18 +128,17 @@ function AdminLogin({ onLogin }: AdminLoginProps) {
                 />
                 <span>Remember Me</span>
               </label>
-              <button
+              <Button
                 className="forgot-link"
-                type="button"
                 onClick={() => setNotice('การรีเซ็ตรหัสผ่านจะเปิดใช้เมื่อเชื่อมระบบบัญชีจริง')}
               >
                 ลืมรหัสผ่าน
-              </button>
+              </Button>
             </div>
 
-            <button className="login-button" type="submit">
+            <Button className="login-button" type="submit">
               เข้าสู่ระบบ <span aria-hidden="true">↪</span>
-            </button>
+            </Button>
 
             {notice && <p className="form-notice" role="status">{notice}</p>}
 
@@ -169,7 +161,7 @@ function AdminLogin({ onLogin }: AdminLoginProps) {
             <a href="#terms">Terms of Service</a>
           </nav>
         </footer>
-      </section>
+      </Card>
     </main>
   )
 }

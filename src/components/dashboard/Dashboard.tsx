@@ -1,18 +1,19 @@
 import { useMemo, useState } from 'react'
+import Button from '../ui/Button'
+import Notice from '../ui/Notice'
 import { activities } from './dashboardData'
 import ActivitiesPanel from './ActivitiesPanel'
 import AnalyticsPanels from './AnalyticsPanels'
 import DashboardSidebar from './DashboardSidebar'
 import DashboardTopbar from './DashboardTopbar'
 import SummaryCards from './SummaryCards'
+import type { ActivityFilter } from './types'
 import '../../Dashboard.css'
 
 type DashboardProps = {
   adminEmail: string
   onLogout: () => void
 }
-
-type ActivityFilter = 'all' | 'processing' | 'completed'
 
 function Dashboard({ adminEmail, onLogout }: DashboardProps) {
   const [search, setSearch] = useState('')
@@ -52,10 +53,7 @@ function Dashboard({ adminEmail, onLogout }: DashboardProps) {
 
         <main className="dashboard-content">
           {message && (
-            <div className="dashboard-notice" role="status">
-              <span>{message}</span>
-              <button type="button" onClick={() => setMessage('')} aria-label="ปิดข้อความ">×</button>
-            </div>
+            <Notice message={message} onClose={() => setMessage('')} />
           )}
 
           <div className="dashboard-heading">
@@ -63,9 +61,9 @@ function Dashboard({ adminEmail, onLogout }: DashboardProps) {
               <h1>แดชบอร์ดสรุปผล</h1>
               <p>ข้อมูลภาพรวมกิจกรรมและผลการประเมินทักษะปัจจุบัน</p>
             </div>
-            <button className="create-button" type="button" onClick={() => showDemoMessage('สร้างกิจกรรมใหม่')}>
+            <Button className="create-button" onClick={() => showDemoMessage('สร้างกิจกรรมใหม่')}>
               <span aria-hidden="true">＋</span> สร้างกิจกรรมใหม่
-            </button>
+            </Button>
           </div>
 
           <SummaryCards />

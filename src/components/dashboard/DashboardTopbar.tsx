@@ -1,3 +1,4 @@
+import IconButton from '../ui/IconButton'
 import type { DemoAction } from './types'
 
 type DashboardTopbarProps = {
@@ -20,12 +21,12 @@ function DashboardTopbar({ search, onSearchChange, onDemoAction }: DashboardTopb
         />
       </label>
       <div className="topbar-actions">
-        <button type="button" aria-label="Notifications" onClick={() => onDemoAction('Notifications')}>
+        <IconButton label="Notifications" onClick={() => onDemoAction('Notifications')}>
           ♧
-        </button>
-        <button type="button" aria-label="Settings" onClick={() => onDemoAction('Settings')}>
+        </IconButton>
+        <IconButton label="Settings" onClick={() => onDemoAction('Settings')}>
           ⚙
-        </button>
+        </IconButton>
       </div>
     </header>
   )

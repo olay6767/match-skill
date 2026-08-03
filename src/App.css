@@ -1,398 +1,193 @@
-.admin-shell {
-  min-height: 100svh;
-  display: grid;
-  place-items: center;
-  padding: 24px 16px;
-  box-sizing: border-box;
-  background: #fff8ee;
-}
+@reference "tailwindcss";
 
-.admin-card {
-  width: min(100%, 280px);
-  overflow: hidden;
-  border: 1px solid #dfe4ec;
-  border-radius: 2px;
-  color: #172037;
-  background: #fff;
-  box-shadow: 0 18px 45px rgba(86, 67, 42, 0.1);
-}
-
-.admin-header {
-  padding: 25px 18px 20px;
-  border-bottom: 1px solid #e1e4eb;
-  text-align: center;
-}
-
-.seda-logo {
-  display: inline-block;
-  margin: 0 auto 17px;
-  text-decoration: none;
-}
-
-.seda-logo img {
-  width: 116px;
-  height: auto;
-  display: block;
-  object-fit: contain;
-}
-
-.admin-header h1 {
-  margin: 0;
-  color: #111c35;
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.admin-header p {
-  margin: 4px 0 0;
-  color: #657087;
-  font-size: 10px;
-  line-height: 1.3;
-}
-
-.admin-body {
-  padding: 25px 21px 23px;
-}
-
-.admin-form {
-  display: grid;
-  gap: 17px;
-}
-
-.field-group {
-  display: grid;
-  gap: 7px;
-}
-
-.field-group label {
-  color: #24304a;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.input-wrap {
-  position: relative;
-}
-
-.input-wrap input {
-  width: 100%;
-  height: 39px;
-  box-sizing: border-box;
-  padding: 0 32px 0 28px;
-  border: 1px solid #d4dae5;
-  border-radius: 5px;
-  outline: 0;
-  color: #24304a;
-  background: #fff;
-  font: inherit;
-  font-size: 10px;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.input-wrap input::placeholder {
-  color: #6f7789;
-}
-
-.input-wrap input:focus {
-  border-color: #f6923a;
-  box-shadow: 0 0 0 3px rgba(246, 146, 58, 0.15);
-}
-
-.input-wrap input[aria-invalid='true'] {
-  border-color: #d65c54;
-}
-
-.field-icon {
-  position: absolute;
-  z-index: 1;
-  pointer-events: none;
-  color: #737c8e;
-}
-
-.field-icon--user {
-  top: 12px;
-  left: 10px;
-  width: 8px;
-  height: 8px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-}
-
-.field-icon--user::after {
-  position: absolute;
-  content: '';
-  width: 12px;
-  height: 6px;
-  top: 8px;
-  left: -3px;
-  border: 1px solid currentColor;
-  border-radius: 8px 8px 3px 3px;
-}
-
-.field-icon--lock {
-  top: 16px;
-  left: 11px;
-  width: 9px;
-  height: 8px;
-  border: 1px solid currentColor;
-  border-radius: 1px;
-}
-
-.field-icon--lock::before {
-  position: absolute;
-  content: '';
-  width: 5px;
-  height: 6px;
-  top: -6px;
-  left: 1px;
-  border: 1px solid currentColor;
-  border-bottom: 0;
-  border-radius: 5px 5px 0 0;
-}
-
-.field-icon--eye {
-  position: relative;
-  top: auto;
-  left: auto;
-  width: 13px;
-  height: 8px;
-  display: block;
-  border: 1px solid currentColor;
-  border-radius: 80% 15%;
-  transform: rotate(45deg);
-}
-
-.field-icon--eye::after {
-  position: absolute;
-  content: '';
-  width: 3px;
-  height: 3px;
-  top: 2px;
-  left: 4px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-}
-
-.show-password {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 34px;
-  height: 39px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  color: #737c8e;
-  background: transparent;
-  cursor: pointer;
-}
-
-.show-password:focus-visible,
-.forgot-link:focus-visible,
-.login-button:focus-visible,
-.seda-logo:focus-visible,
-.admin-footer a:focus-visible {
-  outline: 2px solid rgba(246, 146, 58, 0.55);
-  outline-offset: 2px;
-}
-
-.form-options {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: -2px;
-}
-
-.remember-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #4c556a;
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.remember-row input {
-  width: 13px;
-  height: 13px;
-  margin: 0;
-  accent-color: #f47d21;
-}
-
-.forgot-link {
-  padding: 0;
-  border: 0;
-  color: #e87522;
-  background: transparent;
-  font: inherit;
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.login-button {
-  width: 100%;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 1px;
-  border: 0;
-  border-radius: 5px;
-  color: #fff;
-  background: #ff7517;
-  box-shadow: 0 6px 13px rgba(255, 117, 23, 0.2);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 150ms ease, transform 150ms ease;
-}
-
-.login-button:hover {
-  background: #ea640b;
-  transform: translateY(-1px);
-}
-
-.field-error {
-  margin: -2px 0 0;
-  color: #c34d4b;
-  font-size: 9px;
-}
-
-.form-notice,
-.demo-note {
-  margin: -4px 0 0;
-  color: #737c8e;
-  text-align: center;
-  font-size: 9px;
-  line-height: 1.45;
-}
-
-.form-notice {
-  padding: 8px 9px;
-  border: 1px solid #f2d7bb;
-  border-radius: 4px;
-  color: #a85a1e;
-  background: #fff6ec;
-}
-
-.demo-note {
-  padding-top: 2px;
-  color: #9a9eaa;
-}
-
-.secure-note {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin-top: 4px;
-  padding-top: 18px;
-  border-top: 1px solid #ebedf1;
-  color: #647087;
-  font-size: 8px;
-  letter-spacing: 1px;
-}
-
-.shield-icon {
-  color: #647087;
-  font-size: 11px;
-  line-height: 1;
-}
-
-.success-state {
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  text-align: center;
-}
-
-.success-icon {
-  width: 46px;
-  height: 46px;
-  display: grid;
-  place-items: center;
-  margin-bottom: 5px;
-  border: 5px solid #e3f7ef;
-  border-radius: 50%;
-  color: #fff;
-  background: #24a87d;
-  font-size: 21px;
-  font-weight: 900;
-}
-
-.success-kicker {
-  margin: 0;
-  color: #e87522;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 1.3px;
-}
-
-.success-state h2 {
-  margin: 0;
-  color: #111c35;
-  font-size: 21px;
-}
-
-.success-state p:not(.success-kicker) {
-  margin: 0 0 10px;
-  color: #6d7588;
-  font-size: 10px;
-  line-height: 1.5;
-}
-
-.success-state strong {
-  color: #27334d;
-  overflow-wrap: anywhere;
-}
-
-.admin-footer {
-  padding: 13px 18px 14px;
-  border-top: 1px solid #e1e4eb;
-  color: #70798c;
-  text-align: center;
-  font-size: 9px;
-}
-
-.admin-footer p {
-  margin: 0 0 8px;
-}
-
-.admin-footer nav {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-}
-
-.admin-footer a {
-  color: #697286;
-  text-decoration: none;
-}
-
-.admin-footer a:hover {
-  color: #e87522;
-  text-decoration: underline;
-}
-
-@media (max-width: 360px) {
+@layer components {
   .admin-shell {
-    padding: 12px 8px;
+    @apply box-border grid min-h-svh place-items-center bg-[#fff8ee] px-4 py-6;
   }
 
   .admin-card {
-    width: 100%;
+    @apply w-full max-w-[280px] overflow-hidden rounded-[2px] border border-[#dfe4ec] bg-white text-[#172037] shadow-[0_18px_45px_rgba(86,67,42,0.1)];
+  }
+
+  .admin-header {
+    @apply border-b border-[#e1e4eb] px-[18px] pb-5 pt-[25px] text-center;
+  }
+
+  .seda-logo {
+    @apply mx-auto mb-[17px] inline-block no-underline;
+  }
+
+  .seda-logo img {
+    @apply block h-auto w-[116px] object-contain;
+  }
+
+  .admin-header h1 {
+    @apply m-0 text-[14px] font-extrabold leading-[1.35] text-[#111c35];
+  }
+
+  .admin-header p {
+    @apply m-0 mt-1 text-[10px] leading-[1.3] text-[#657087];
+  }
+
+  .admin-body {
+    @apply px-[21px] pb-[23px] pt-[25px];
+  }
+
+  .admin-form {
+    @apply grid gap-[17px];
+  }
+
+  .field-group {
+    @apply grid gap-[7px];
+  }
+
+  .field-group label {
+    @apply text-[10px] font-semibold text-[#24304a];
+  }
+
+  .input-wrap {
+    @apply relative;
+  }
+
+  .input-wrap input {
+    @apply box-border h-[39px] w-full rounded-[5px] border border-[#d4dae5] bg-white px-8 pl-7 text-[10px] text-[#24304a] outline-none transition-[border-color,box-shadow] duration-150;
+  }
+
+  .input-wrap input::placeholder {
+    @apply text-[#6f7789];
+  }
+
+  .input-wrap input:focus {
+    @apply border-[#f6923a] shadow-[0_0_0_3px_rgba(246,146,58,0.15)];
+  }
+
+  .input-wrap input[aria-invalid='true'] {
+    @apply border-[#d65c54];
+  }
+
+  .field-icon {
+    @apply pointer-events-none absolute z-[1] text-[#737c8e];
+  }
+
+  .field-icon--user {
+    @apply left-[10px] top-3 h-2 w-2 rounded-full border border-current;
+  }
+
+  .field-icon--user::after {
+    position: absolute;
+    content: '';
+    width: 12px;
+    height: 6px;
+    top: 8px;
+    left: -3px;
+    border: 1px solid currentColor;
+    border-radius: 8px 8px 3px 3px;
+  }
+
+  .field-icon--lock {
+    @apply left-[11px] top-4 h-2 w-[9px] rounded-[1px] border border-current;
+  }
+
+  .field-icon--lock::before {
+    position: absolute;
+    content: '';
+    width: 5px;
+    height: 6px;
+    top: -6px;
+    left: 1px;
+    border: 1px solid currentColor;
+    border-bottom: 0;
+    border-radius: 5px 5px 0 0;
+  }
+
+  .field-icon--eye {
+    @apply relative left-auto top-auto block h-2 w-[13px] rotate-45 rounded-[80%_15%] border border-current;
+  }
+
+  .field-icon--eye::after {
+    position: absolute;
+    content: '';
+    width: 3px;
+    height: 3px;
+    top: 2px;
+    left: 4px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+  }
+
+  .show-password {
+    @apply absolute right-0 top-0 grid h-[39px] w-[34px] place-items-center border-0 bg-transparent p-0 text-[#737c8e];
+  }
+
+  .form-options {
+    @apply -mt-0.5 flex items-center justify-between gap-2;
+  }
+
+  .remember-row {
+    @apply inline-flex cursor-pointer items-center gap-[5px] text-[10px] text-[#4c556a];
+  }
+
+  .remember-row input {
+    @apply m-0 h-[13px] w-[13px] accent-[#f47d21];
+  }
+
+  .forgot-link {
+    @apply cursor-pointer border-0 bg-transparent p-0 text-[10px] text-[#e87522];
+  }
+
+  .login-button {
+    @apply mt-px flex h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-[5px] border-0 bg-[#ff7517] text-[11px] font-bold text-white shadow-[0_6px_13px_rgba(255,117,23,0.2)] transition-[background,transform] duration-150 hover:-translate-y-px hover:bg-[#ea640b];
+  }
+
+  .field-error {
+    @apply -mt-0.5 mb-0 text-[9px] text-[#c34d4b];
+  }
+
+  .form-notice {
+    @apply -mt-1 mb-0 rounded border border-[#f2d7bb] bg-[#fff6ec] px-[9px] py-2 text-center text-[9px] leading-[1.45] text-[#a85a1e];
+  }
+
+  .demo-note {
+    @apply m-0 pt-0.5 text-center text-[9px] leading-[1.45] text-[#9a9eaa];
+  }
+
+  .secure-note {
+    @apply mt-1 flex items-center justify-center gap-1 border-t border-[#ebedf1] pt-[18px] text-[8px] tracking-[1px] text-[#647087];
+  }
+
+  .shield-icon {
+    @apply text-[11px] leading-none text-[#647087];
+  }
+
+  .admin-footer {
+    @apply border-t border-[#e1e4eb] px-[18px] pb-[14px] pt-[13px] text-center text-[9px] text-[#70798c];
+  }
+
+  .admin-footer p {
+    @apply m-0 mb-2;
+  }
+
+  .admin-footer nav {
+    @apply flex justify-center gap-[15px];
+  }
+
+  .admin-footer a {
+    @apply text-[#697286] no-underline hover:text-[#e87522] hover:underline;
+  }
+
+  .admin-shell button:focus-visible,
+  .admin-shell input:focus-visible,
+  .seda-logo:focus-visible,
+  .admin-footer a:focus-visible {
+    @apply outline-2 outline-[#f6923a]/55 outline-offset-2;
   }
 }
 
+@media (max-width: 360px) {
+  .admin-shell { @apply px-2 py-3; }
+  .admin-card { @apply w-full; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.01ms !important;
-  }
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
