@@ -1,0 +1,34 @@
+import type { DemoAction } from './types'
+
+type DashboardTopbarProps = {
+  search: string
+  onSearchChange: (value: string) => void
+  onDemoAction: DemoAction
+}
+
+function DashboardTopbar({ search, onSearchChange, onDemoAction }: DashboardTopbarProps) {
+  return (
+    <header className="dashboard-topbar">
+      <label className="dashboard-search">
+        <span aria-hidden="true">⌕</span>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder="Search activities, students..."
+          aria-label="Search activities and students"
+        />
+      </label>
+      <div className="topbar-actions">
+        <button type="button" aria-label="Notifications" onClick={() => onDemoAction('Notifications')}>
+          ♧
+        </button>
+        <button type="button" aria-label="Settings" onClick={() => onDemoAction('Settings')}>
+          ⚙
+        </button>
+      </div>
+    </header>
+  )
+}
+
+export default DashboardTopbar
