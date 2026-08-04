@@ -1,0 +1,22 @@
+services:
+  mariadb:
+    image: mariadb:12.3.2
+    container_name: match-skill-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?Set MARIADB_ROOT_PASSWORD in .env.database}
+      MARIADB_DATABASE: match_skill
+      MARIADB_USER: match_skill_app
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?Set MARIADB_PASSWORD in .env.database}
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - match_skill_mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  match_skill_mariadb_data:

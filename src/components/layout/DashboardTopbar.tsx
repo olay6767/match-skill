@@ -1,5 +1,6 @@
 import IconButton from '../ui/IconButton'
-import type { DemoAction } from './types'
+import Icon from '../ui/Icon'
+import type { DemoAction } from '../dashboard/types'
 
 type DashboardTopbarProps = {
   search: string
@@ -11,7 +12,7 @@ function DashboardTopbar({ search, onSearchChange, onDemoAction }: DashboardTopb
   return (
     <header className="dashboard-topbar">
       <label className="dashboard-search">
-        <span aria-hidden="true">⌕</span>
+        <Icon name="search" />
         <input
           type="search"
           value={search}
@@ -22,10 +23,10 @@ function DashboardTopbar({ search, onSearchChange, onDemoAction }: DashboardTopb
       </label>
       <div className="topbar-actions">
         <IconButton label="Notifications" onClick={() => onDemoAction('Notifications')}>
-          ♧
+          <Icon name="bell" />
         </IconButton>
         <IconButton label="Settings" onClick={() => onDemoAction('Settings')}>
-          ⚙
+          <Icon name="settings" />
         </IconButton>
       </div>
     </header>

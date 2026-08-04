@@ -3,6 +3,7 @@
 @layer base {
   :root {
     @apply font-sans text-[#172037] antialiased;
+    font-family: 'Kanit', sans-serif;
     background: #fff8ee;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
@@ -17,7 +18,9 @@
   }
 
   button,
-  input {
+  input,
+  select,
+  textarea {
     font-family: inherit;
   }
 

@@ -6,7 +6,7 @@ import TextField from './ui/TextField'
 import '../App.css'
 
 type AdminLoginProps = {
-  onLogin: (email: string) => void
+  onLogin: (email: string, password: string, remember: boolean) => Promise<void>
 }
 
 type FormErrors = {
@@ -28,6 +28,7 @@ function AdminLogin({ onLogin }: AdminLoginProps) {
   )
   const [errors, setErrors] = useState<FormErrors>({})
   const [notice, setNotice] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const validate = () => {
     const nextErrors: FormErrors = {}
@@ -37,32 +38,35 @@ function AdminLogin({ onLogin }: AdminLoginProps) {
       nextErrors.email = 'กรุณากรอกอีเมลผู้ดูแลระบบ'
     } else if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
       nextErrors.email = 'รูปแบบอีเมลยังไม่ถูกต้อง'
-    } else if (normalizedEmail.toLowerCase() !== DEMO_ADMIN_EMAIL) {
-      nextErrors.email = 'อีเมลนี้ไม่มีสิทธิ์ผู้ดูแลระบบ'
     }
 
     if (!password) {
       nextErrors.password = 'กรุณากรอกรหัสผ่านผู้ดูแลระบบ'
-    } else if (password !== DEMO_ADMIN_PASSWORD) {
-      nextErrors.password = 'รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง'
     }
 
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!validate()) return
 
     const normalizedEmail = email.trim()
     setNotice('')
-    if (rememberMe) {
-      window.localStorage.setItem('matchskill-admin-email', normalizedEmail)
-    } else {
-      window.localStorage.removeItem('matchskill-admin-email')
+    setIsSubmitting(true)
+    try {
+      await onLogin(normalizedEmail, password, rememberMe)
+      if (rememberMe) {
+        window.localStorage.setItem('matchskill-admin-email', normalizedEmail)
+      } else {
+        window.localStorage.removeItem('matchskill-admin-email')
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'ไม่สามารถเข้าสู่ระบบได้')
+    } finally {
+      setIsSubmitting(false)
     }
-    onLogin(normalizedEmail)
   }
 
   return (
@@ -136,8 +140,9 @@ function AdminLogin({ onLogin }: AdminLoginProps) {
               </Button>
             </div>
 
-            <Button className="login-button" type="submit">
-              เข้าสู่ระบบ <span aria-hidden="true">↪</span>
+            <Button className="login-button" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}{' '}
+              {!isSubmitting && <span aria-hidden="true">↪</span>}
             </Button>
 
             {notice && <p className="form-notice" role="status">{notice}</p>}
@@ -147,10 +152,12 @@ function AdminLogin({ onLogin }: AdminLoginProps) {
               SECURE CONNECTION ACTIVE
             </div>
 
-            <p className="demo-note">
-              บัญชีทดลอง: <strong>{DEMO_ADMIN_EMAIL}</strong> /{' '}
-              <strong>{DEMO_ADMIN_PASSWORD}</strong>
-            </p>
+            {import.meta.env.DEV && (
+              <p className="demo-note">
+                บัญชีพัฒนา: <strong>{DEMO_ADMIN_EMAIL}</strong> /{' '}
+                <strong>{DEMO_ADMIN_PASSWORD}</strong>
+              </p>
+            )}
           </form>
         </div>
 
