@@ -2,6 +2,10 @@
 
 เว็บ Admin Login และ Dashboard สำหรับดูข้อมูลกิจกรรมและผลประเมินทักษะ เชื่อมต่อ Node.js API และ MariaDB ที่ทำงานใน Docker
 
+## คู่มือแบ่งงานตามหน้า
+
+ก่อนเพิ่มฟีเจอร์หรือเปิด Pull Request ให้อ่าน [คู่มือพัฒนา SEDA แยกตามหน้า](<./docs/PAGE_DEVELOPMENT_GUIDE.md>) ซึ่งระบุ route, ไฟล์, API, ฐานข้อมูล และเกณฑ์รับงานของแต่ละหน้า
+
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/olay6767/match-skill?quickstart=1)
 
 ## เปิดเขียนออนไลน์ด้วย GitHub Codespaces

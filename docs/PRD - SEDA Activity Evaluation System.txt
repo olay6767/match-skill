@@ -1,0 +1,85 @@
+Product Requirement Document (PRD)
+ระบบประเมินและติดตามผลกิจกรรมส่งเสริมผู้ประกอบการ (SEDA Activity Evaluation System)
+1. ข้อมูลทั่วไปของโครงการ (Project Overview)
+* ชื่อโครงการ: ระบบประเมินและติดตามผลกิจกรรมส่งเสริมผู้ประกอบการ (SEDA Activity Evaluation System)
+* หน่วยงาน/เจ้าของโครงการ: สถานพัฒนาความเป็นผู้ประกอบการสำหรับนักศึกษา (SEDA - Student Entrepreneurship Development Academy)
+* ผู้พัฒนาระบบ: บริษัท มี กรุ๊ป เอ็นเตอร์ไพรส์ จำกัด (Me Group Enterprise Co., Ltd.)
+* ผู้รับผิดชอบโครงการ: คุณธนพล คงเจริญสุข (Project Manager)x
+* เวอร์ชันเอกสาร: 1.1.0
+* วันที่จัดทำ: 4 สิงหาคม 2569
+2. วัตถุประสงค์และที่มาของโครงการ (Objectives & Background)
+ปัจจุบัน SEDA มีภารกิจหลักในการจัดกิจกรรมเพื่อส่งเสริมและพัฒนาทักษะความเป็นผู้ประกอบการให้แก่นักศึกษา เดิมทีการวัดผลและเก็บข้อมูลประเมินผลโครงการใช้งานผ่าน Google Forms ซึ่งมีข้อจำกัดในการเชื่อมโยงข้อมูล Pre-test & Post-test และการนำข้อมูลไปวิเคราะห์ประมวลผลต่อในระดับภาพรวม
+วัตถุประสงค์หลัก:
+1. พัฒนา Web Application เฉพาะทางเพื่อทดแทนการใช้ Google Forms ในการประเมินกิจกรรมของ SEDA
+2. รวบรวมข้อมูลการตอบแบบสอบถามก่อนเข้าร่วม (Pre-evaluation) และหลังเข้าร่วม (Post-evaluation) อย่างเป็นระบบ
+3. วิเคราะห์และเปรียบเทียบการเติบโตทางทักษะผู้ประกอบการของนักศึกษาแบบ Real-time พร้อมแสดงผลผ่าน Dashboard และ Report สำหรับเจ้าหน้าที่ SEDA
+3. ขอบเขตและเงื่อนไขสำคัญ (Key Scope & Business Rules)
+1. Standardized Survey Policy: ทุกกิจกรรมจะใช้ ชุดแบบสอบถามมาตรฐานชุดเดียวกัน (Single Survey Template) เพื่อสร้างดัชนีชี้วัด (Baseline & Outcome) ที่เป็นมาตรฐานเดียวกันในการวัดความพร้อมผู้ประกอบการ
+2. Pre & Post Activity Workflow: นักศึกษาจะต้องทำแบบสอบถาม 2 ครั้ง ต่อ 1 กิจกรรม คือ ก่อนเริ่มกิจกรรม และ หลังจบกิจกรรม
+3. Platform: รองรับการใช้งานผ่านเว็บ (Responsive Web Application) ทั้ง Desktop, Tablet และ Mobile Smart Phone
+4. ผู้ใช้งานระบบและสิทธิ์การใช้งาน (User Roles & Permissions)
+บทบาท (Role)
+	สิทธิ์และหน้าที่ความรับผิดชอบในระบบ
+	SEDA Staff / Admin
+	• จัดการรายชื่อและข้อมูลกิจกรรมส่งเสริมผู้ประกอบการ
+
+
+• จัดการชุดแบบสอบถามมาตรฐาน (ข้อความคำถาม/ตัวเลือก)
+
+
+• กำหนดวัน-เวลา เปิดและปิดรับการตอบแบบสอบถามของแต่ละกิจกรรม
+
+
+• เข้าถึง Dashboard วิเคราะห์ผลภาพรวมและรายกิจกรรม
+
+
+• ส่งออกข้อมูลดิบ (Raw Data) และรายงานสรุปผล
+	Student (นักศึกษา)
+	• เข้าสู่ระบบเพื่อดูรายการกิจกรรมที่ตนเองลงทะเบียนหรือเข้าร่วม
+
+
+• ทำแบบสอบถามก่อนเข้าร่วมกิจกรรม (Pre-test)
+
+
+• ทำแบบสอบถามหลังเข้าร่วมกิจกรรม (Post-test)
+
+
+• ตรวจสอบประวัติการตอบแบบสอบถามของตนเอง
+	5. ฟังก์ชันการทำงานหลักของระบบ (Functional Requirements)
+5.1 ระบบจัดการกิจกรรมและแบบสอบถาม (Event & Survey Management)
+* Event Creation: เจ้าหน้าที่ SEDA สามารถสร้างกิจกรรม กำหนดชื่อ รายละเอียด และช่วงเวลาดำเนินโครงการได้
+* Standardized Form Management: เจ้าหน้าที่สามารถจัดการคลังคำถามชุดมาตรฐาน (Likert Scale 1-5, Multiple Choice, และข้อคิดเห็นเพิ่มเติม) ที่ใช้ร่วมกันทุกกิจกรรม
+* Time-window Control: เจ้าหน้าที่สามารถตั้งเวลาเปิด-ปิดการเข้าทำแบบสอบถาม Pre-test และ Post-test ของแต่ละกิจกรรมได้แบบอัตโนมัติ
+5.2 ระบบสำหรับนักศึกษา (Student Evaluation Portal)
+* Student Dashboard: แสดงรายการกิจกรรม และสถานะความคืบหน้าของแบบสอบถาม (เช่น ยังไม่ได้ทำ, เสร็จสิ้น Pre-test, เสร็จสิ้น Post-test)
+* Responsive Survey Form: อินเทอร์เฟซการตอบแบบสอบถามที่ออกแบบให้อ่านง่าย สบายตา สัมผัสง่ายบนมือถือ พร้อมระบบป้องกันการส่งแบบสอบถามซ้ำ
+5.3 ระบบวิเคราะห์ข้อมูลและรายงาน (Analytics & Reporting Engine)
+* Pre vs Post Comparison: ระบบคำนวณความต่างของคะแนนประเมินตนเองก่อนและหลังเข้าร่วมกิจกรรมโดยอัตโนมัติ
+* Visual Dashboard: แสดงผลผ่านแผนภูมิ (Bar Chart, Radar Chart แสดงทักษะแต่ละด้าน, Pie Chart)
+* Export Capability: สามารถ Export ข้อมูลเป็นไฟล์ Excel (.xlsx) และสถิติสรุปเชิงบริหาร
+6. ข้อกำหนดทางเทคนิคและประสิทธิภาพ (Non-Functional Requirements)
+หัวข้อ
+	รายละเอียดข้อกำหนด
+	Usability & UX
+	อินเทอร์เฟซเรียบง่าย ใช้งานสะดวก ไม่ซับซ้อน รองรับ Mobile-first design
+	Performance
+	รองรับ Concurrent Users สูงสุดในช่วงสแกนตอบแบบสอบถามท้ายกิจกรรม
+	Security & PDPA
+	ระบบยืนยันตัวตนปลอดภัย มีการจัดการสิทธิ์การเข้าถึงข้อมูลตามบทบาท และปฏิบัติตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล
+	Data Integrity
+	เชื่อมโยงข้อมูล Pre-test และ Post-test ของนักศึกษารายคนได้อย่างแม่นยำผ่าน Unique Identifier
+	7. แผนภาพลำดับการทำงาน (Process Flow)
+[ เจ้าหน้าที่ SEDA สร้างกิจกรรม ] ──> [ กำหนดช่วงเวลาเปิด Pre / Post ]
+                                             │
+                                             ▼
+[ นักศึกษาทำ Pre-test ] ────> [ เข้าร่วมกิจกรรม SEDA ] ────> [ นักศึกษาทำ Post-test ]
+                                                                         │
+                                                                         ▼
+                                                          [ ระบบประมวลผล & แสดง Dashboard ]
+
+8. แผนการดำเนินงานและส่งมอบ (Project Roadmap)
+1. Phase 1: Finalize Requirements & Database Design
+2. Phase 2: UI/UX Design & Core Survey Engine Development
+3. Phase 3: Analytics Dashboard & Data Export Implementation
+4. Phase 4: System Integration, UAT & User Training
+5. Phase 5: Production Deployment & Handover
