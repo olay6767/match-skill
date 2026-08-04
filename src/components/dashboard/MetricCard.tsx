@@ -1,7 +1,8 @@
 import Card from '../ui/Card'
+import Icon, { type IconName } from '../ui/Icon'
 
 type MetricCardProps = {
-  icon: string
+  icon: IconName
   tone: string
   meta: string
   metaClass: string
@@ -13,9 +14,7 @@ function MetricCard({ icon, tone, meta, metaClass, label, value }: MetricCardPro
   return (
     <Card as="article" className="metric-card">
       <div className="metric-card__top">
-        <span className={`metric-icon metric-icon--${tone}`} aria-hidden="true">
-          {icon}
-        </span>
+        <span className={`metric-icon metric-icon--${tone}`}><Icon name={icon} /></span>
         <span className={metaClass}>{meta}</span>
       </div>
       <p>{label}</p>

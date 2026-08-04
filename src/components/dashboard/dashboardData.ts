@@ -1,51 +1,4 @@
-import type { Activity, ActivityStatus } from './types'
-
-export const activities: Activity[] = [
-  {
-    name: 'Creative Thinking Workshop 2024',
-    detail: 'Batch 01 – General',
-    date: '24 Oct 2023',
-    participants: '120 / 150',
-    preTest: 100,
-    postTest: 45,
-    status: 'processing',
-    tone: 'blue',
-    icon: '◉',
-  },
-  {
-    name: 'Advanced Engineering Ethics',
-    detail: 'Internal Training',
-    date: '18 Oct 2023',
-    participants: '45 / 50',
-    preTest: 100,
-    postTest: 100,
-    status: 'completed',
-    tone: 'orange',
-    icon: '♙',
-  },
-  {
-    name: 'English Communication Level 3',
-    detail: 'Academic Program',
-    date: '30 Oct 2023',
-    participants: '0 / 200',
-    preTest: 0,
-    postTest: 0,
-    status: 'draft',
-    tone: 'slate',
-    icon: '◎',
-  },
-  {
-    name: 'UI/UX Designer Certification',
-    detail: 'Professional Dev',
-    date: '15 Nov 2023',
-    participants: '88 / 100',
-    preTest: 100,
-    postTest: 0,
-    status: 'open',
-    tone: 'purple',
-    icon: '✧',
-  },
-]
+import type { ActivityStatus } from './types'
 
 export const chartData = [
   { day: 'Mon', pre: 42, post: 65 },
@@ -69,4 +22,5 @@ export const statusLabels: Record<ActivityStatus, string> = {
   completed: 'Completed',
   draft: 'Draft',
   open: 'Open',
+  closed: 'Closed',
 }

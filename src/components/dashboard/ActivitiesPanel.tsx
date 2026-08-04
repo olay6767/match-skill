@@ -9,9 +9,12 @@ type ActivitiesPanelProps = {
   filter: ActivityFilter
   onFilterChange: (filter: ActivityFilter) => void
   onDemoAction: DemoAction
+  onEdit: (activity: Activity) => void
+  onDelete: (activity: Activity) => void
+  onToggle: (activity: Activity) => void
 }
 
-function ActivitiesPanel({ activities, filter, onFilterChange, onDemoAction }: ActivitiesPanelProps) {
+function ActivitiesPanel({ activities, filter, onFilterChange, onDemoAction, onEdit, onDelete, onToggle }: ActivitiesPanelProps) {
   return (
     <Card as="section" className="panel activities-panel">
       <div className="panel-heading panel-heading--activities">
@@ -40,8 +43,11 @@ function ActivitiesPanel({ activities, filter, onFilterChange, onDemoAction }: A
             {activities.map((activity) => (
               <ActivityRow
                 activity={activity}
-                key={activity.name}
+                key={activity.id}
                 onDemoAction={onDemoAction}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onToggle={onToggle}
               />
             ))}
           </tbody>
@@ -50,7 +56,7 @@ function ActivitiesPanel({ activities, filter, onFilterChange, onDemoAction }: A
       </div>
 
       <div className="table-footer">
-        <span>Showing 1–{activities.length} of 158 results</span>
+        <span>Showing {activities.length === 0 ? 0 : 1}–{activities.length} of {activities.length} results</span>
         <Pagination onDemoAction={onDemoAction} />
       </div>
     </Card>
