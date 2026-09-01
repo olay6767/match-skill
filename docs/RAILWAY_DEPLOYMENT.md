@@ -76,6 +76,10 @@ https://<admin-domain>/api/health
 
 The expected response has `status: "ok"` and `database: "connected"`.
 
+The Vercel deployments proxy `/api/*` to the Railway API using the repository
+root `vercel.json`. If the Railway API domain changes, update its rewrite
+destination and redeploy both Vercel projects.
+
 For a custom domain, update `ADMIN_FRONTEND_URL` or `USER_FRONTEND_URL` to the
 final HTTPS URL and redeploy the API. These values are also used for password
 reset links and QR codes.
