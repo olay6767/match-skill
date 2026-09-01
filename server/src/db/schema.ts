@@ -368,7 +368,20 @@ const schemaStatements = [
 
 export async function ensureSchema() {
   for (const statement of schemaStatements) {
-    await pool.query(statement)
+    const compatibleStatement = statement
+      .replace(/\bADD COLUMN IF NOT EXISTS\b/gi, 'ADD COLUMN')
+      .replace(/\bCREATE UNIQUE INDEX IF NOT EXISTS\b/gi, 'CREATE UNIQUE INDEX')
+      .replace(/\bCREATE INDEX IF NOT EXISTS\b/gi, 'CREATE INDEX')
+
+    try {
+      await pool.query(compatibleStatement)
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error
+        ? String(error.code)
+        : ''
+      if (code === 'ER_DUP_FIELDNAME' || code === 'ER_DUP_KEYNAME') continue
+      throw error
+    }
   }
   await ensureAssessmentSeed()
 }
