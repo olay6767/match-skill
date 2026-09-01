@@ -1,0 +1,13 @@
+.git
+.github
+.devcontainer
+.vscode
+node_modules
+dist
+server/dist
+outputs
+*.log
+.env*
+server/.env
+docs
+product requirement design

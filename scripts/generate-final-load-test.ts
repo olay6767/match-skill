@@ -1,12 +1,14 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import ExcelJS from 'exceljs'
 import { writeFinalTemplateSheet } from '../server/src/services/exportService.js'
 
 const studentCount = 100
-const outputDirectory = path.resolve('outputs/final-load-test')
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+const outputDirectory = path.join(projectRoot, 'outputs/final-load-test')
 const outputPath = path.join(outputDirectory, 'Final.xlsx')
-const templatePath = path.resolve('server/assets/Final-template.xlsx')
+const templatePath = path.join(projectRoot, 'server/assets/Final-template.xlsx')
 
 async function main() {
   const workbook = new ExcelJS.Workbook()

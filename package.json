@@ -12,6 +12,8 @@
     "build:admin": "tsc -b && vite build --mode admin --outDir dist/admin",
     "build:user": "tsc -b && vite build --mode user --outDir dist/user",
     "build:api": "tsc -p server/tsconfig.json",
+    "check:scripts": "tsc -p scripts/tsconfig.json",
+    "test:final-export": "tsx scripts/generate-final-load-test.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "start:api": "node server/dist/index.js"
