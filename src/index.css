@@ -32,3 +32,51 @@
     @apply bg-[#ff7517] text-white;
   }
 }
+
+@layer components {
+  .ui-icon {
+    display: inline-flex;
+    width: 1em;
+    height: 1em;
+    flex: 0 0 1em;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Material Symbols Outlined';
+    font-size: 1em;
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    direction: ltr;
+    font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Unlayered so the app sizing wins over Google Fonts' default 24px rule. */
+.ui-icon {
+  display: inline-flex;
+  width: 1em;
+  height: 1em;
+  flex: 0 0 1em;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Material Symbols Outlined';
+  font-size: 16px;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  font-variation-settings: 'FILL' 0;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}

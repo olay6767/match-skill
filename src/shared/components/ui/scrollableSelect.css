@@ -1,0 +1,151 @@
+.scrollable-select-field {
+  display: grid;
+  min-width: 180px;
+  gap: 6px;
+  color: #38516f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.scrollable-select-field > label { cursor: default; }
+.scrollable-select { position: relative; min-width: 0; }
+
+.scrollable-select__trigger {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  border: 1px solid #d9bfa8;
+  border-radius: 9px;
+  background: #fff;
+  padding: 8px 11px 8px 13px;
+  color: #203d63;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+.scrollable-select__trigger:hover:not(:disabled) { border-color: #e99a60; background: #fffaf5; }
+.scrollable-select__trigger:focus-visible,
+.scrollable-select__trigger[aria-expanded="true"] { border-color: #ed741c; outline: 0; box-shadow: 0 0 0 3px rgba(237,116,28,.14); }
+.scrollable-select__trigger[aria-invalid="true"] { border-color: #cc4b3e; }
+.scrollable-select__trigger:disabled { cursor: not-allowed; background: #f5f3f1; color: #9a948f; opacity: .72; }
+.scrollable-select__trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scrollable-select__trigger .ui-icon { flex: none; transform: rotate(90deg); color: #d86516; font-size: 19px; transition: transform .16s ease; }
+.scrollable-select__trigger[aria-expanded="true"] .ui-icon { transform: rotate(-90deg); }
+
+.scrollable-select__menu {
+  position: absolute;
+  z-index: 1000;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  width: max(100%, 250px);
+  max-height: min(286px, 45vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #edc7a7;
+  border-radius: 11px;
+  background: #fff;
+  padding: 6px;
+  box-shadow: 0 14px 32px rgba(86,48,22,.18);
+  scrollbar-color: #e78a49 #fff3e8;
+  scrollbar-width: thin;
+}
+
+.scrollable-select--up .scrollable-select__menu { top: auto; bottom: calc(100% + 6px); }
+.scrollable-select__menu button {
+  width: 100%;
+  min-height: 36px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  padding: 8px 11px;
+  color: #38516f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+}
+.scrollable-select__menu button:hover,
+.scrollable-select__menu button:focus-visible { outline: 0; background: #fff1e5; color: #b95714; }
+.scrollable-select__menu button.is-selected { background: #ffe7d2; color: #b95714; font-weight: 800; }
+.scrollable-select__menu::-webkit-scrollbar { width: 9px; }
+.scrollable-select__menu::-webkit-scrollbar-track { border-radius: 99px; background: #fff3e8; }
+.scrollable-select__menu::-webkit-scrollbar-thumb { border-radius: 99px; background: #e78a49; }
+
+.reports-filters .scrollable-select-field { min-width: 260px; }
+.analytics-filters .scrollable-select-field { min-width: 190px; }
+.activity-analysis-filters .scrollable-select-field,
+.activity-list-filters .scrollable-select-field,
+.comparison-score-filters__controls .scrollable-select-field { min-width: 0; }
+
+.activity-analysis-list-meta .activity-analysis-page-size {
+  width: 118px;
+  min-width: 118px;
+  margin-left: auto;
+}
+
+.activity-analysis-page-size .scrollable-select__trigger,
+.activity-list-page-size .scrollable-select__trigger { min-height: 34px; padding-block: 5px; }
+.activity-list-pagination .activity-list-page-size { width: 102px; min-width: 102px; }
+
+.shared-activity-form .activity-form-template-select > label {
+  color: #26334c;
+  font-size: 11px;
+  font-weight: 600;
+}
+.shared-activity-form .activity-form-template-select .scrollable-select__trigger {
+  min-height: 40px;
+  border-color: #d8dde7;
+  background: #fcfcfd;
+  border-radius: 6px;
+  color: #24314b;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.staff-create-form .scrollable-select-field { min-width: 170px; color: #38516f; }
+.staff-role-select { width: 150px; min-width: 150px; }
+.staff-role-select > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.staff-role-select .scrollable-select__trigger { min-height: 40px; border-color: #b8c9dc; border-radius: 8px; }
+
+.student-select-field > .scrollable-select-field { width: 100%; min-width: 0; }
+.student-select-field > .scrollable-select-field > label { color: #263147; font-size: 16px; font-weight: 700; }
+.student-select-field .scrollable-select__trigger {
+  box-sizing: border-box;
+  min-height: 48px;
+  border-color: #bfc7d4;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #172037;
+  font-size: 16px;
+  line-height: 1.4;
+}
+.user-progress-toolbar .user-progress-activity-select { width: min(360px, 100%); flex: 0 1 360px; color: #725543; font-size: 12px; font-weight: 800; }
+.user-progress-toolbar .user-progress-activity-select .scrollable-select__trigger { min-height: 44px; border-color: #e5c5ac; border-radius: 12px; color: #3f2d23; }
+
+@media (max-width: 720px) {
+  .scrollable-select-field { width: 100%; min-width: 0; }
+  .scrollable-select__trigger { min-height: 44px; font-size: 16px; }
+  .scrollable-select__menu { width: 100%; min-width: 0; max-height: min(280px, 44vh); }
+  .scrollable-select__menu button { min-height: 42px; font-size: 15px; }
+  .reports-filters .scrollable-select-field,
+  .analytics-filters .scrollable-select-field,
+  .user-progress-toolbar .user-progress-activity-select { width: 100%; min-width: 0; }
+  .activity-analysis-list-meta .activity-analysis-page-size,
+  .activity-list-pagination .activity-list-page-size { width: 110px; min-width: 110px; }
+  .staff-create-form .scrollable-select-field { width: 100%; min-width: 0; }
+}

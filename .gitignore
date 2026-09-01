@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+.codex-tmp/
+.tmp-*/
+.tools/
+outputs/
+docs/*Responses*.xlsx
 .env.database
 server/.env
 server/dist

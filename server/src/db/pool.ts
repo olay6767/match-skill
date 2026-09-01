@@ -7,6 +7,7 @@ export const pool = mariadb.createPool({
   user: env.DB_USER,
   password: env.DB_PASSWORD,
   database: env.DB_NAME,
+  allowPublicKeyRetrieval: env.NODE_ENV !== 'production',
   connectionLimit: 5,
   acquireTimeout: 10_000,
   bigIntAsNumber: true,

@@ -15,7 +15,7 @@ export async function ensureDevelopmentAdmin() {
   const passwordHash = await argon2.hash(env.DEV_ADMIN_PASSWORD)
   await pool.query(
     `INSERT INTO admins (email, password_hash, full_name, role)
-     VALUES (?, ?, ?, 'admin')`,
+     VALUES (?, ?, ?, 'super_admin')`,
     [env.DEV_ADMIN_EMAIL.toLowerCase(), passwordHash, env.DEV_ADMIN_NAME],
   )
 }

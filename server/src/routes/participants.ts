@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { pool } from '../db/pool.js'
 import { ApiError } from '../lib/http.js'
 import { requireAdmin } from '../middleware/auth.js'
+import { requireSuperAdmin } from '../middleware/superAdminAuthorization.js'
 
 const participantSchema = z.object({
   name: z.string().trim().min(2).max(150),
@@ -10,7 +11,7 @@ const participantSchema = z.object({
 })
 
 export const participantsRouter = Router()
-participantsRouter.use(requireAdmin)
+participantsRouter.use(requireAdmin, requireSuperAdmin)
 
 participantsRouter.get('/', async (_request, response) => {
   const participants = await pool.query(
