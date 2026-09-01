@@ -44,7 +44,15 @@ DB_NAME=${{MySQL.MYSQLDATABASE}}
 JWT_SECRET=replace-with-a-random-secret-of-at-least-32-characters
 ADMIN_FRONTEND_URL=https://${{admin.RAILWAY_PUBLIC_DOMAIN}}
 USER_FRONTEND_URL=https://${{user.RAILWAY_PUBLIC_DOMAIN}}
+BOOTSTRAP_ADMIN_EMAIL=admin@example.com
+BOOTSTRAP_ADMIN_PASSWORD=replace-with-a-strong-password-of-at-least-12-characters
+BOOTSTRAP_ADMIN_NAME=System Administrator
 ```
+
+The API creates this account as `super_admin` only when the email does not
+already exist. After the first successful deployment and login, remove
+`BOOTSTRAP_ADMIN_PASSWORD` and `BOOTSTRAP_ADMIN_EMAIL` from Railway Variables;
+the database account remains available.
 
 For password-reset email in production, also configure `SMTP_HOST`,
 `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_FROM`.

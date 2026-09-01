@@ -4,7 +4,7 @@ import express from 'express'
 import { env } from './config/env.js'
 import { closePool, pool } from './db/pool.js'
 import { ensureSchema } from './db/schema.js'
-import { ensureDevelopmentAdmin } from './db/seed.js'
+import { ensureAdminSeed } from './db/seed.js'
 import { isDatabaseAvailable, setDatabaseAvailable } from './db/availability.js'
 import { errorHandler, notFoundHandler } from './lib/http.js'
 import { activitiesRouter } from './routes/activities.js'
@@ -60,7 +60,7 @@ app.use(errorHandler)
 
 try {
   await ensureSchema()
-  await ensureDevelopmentAdmin()
+  await ensureAdminSeed()
 } catch (error) {
   if (env.NODE_ENV === 'production') throw error
   setDatabaseAvailable(false)
