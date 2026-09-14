@@ -19,7 +19,7 @@ const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS activities (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    detail VARCHAR(255),
+    detail TEXT,
     activity_date DATE,
     participant_limit INT UNSIGNED NOT NULL DEFAULT 0,
     status VARCHAR(30) NOT NULL DEFAULT 'draft',
@@ -31,6 +31,7 @@ const schemaStatements = [
     CONSTRAINT fk_activities_admin FOREIGN KEY (created_by)
       REFERENCES admins(id) ON DELETE SET NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  `ALTER TABLE activities MODIFY COLUMN detail TEXT NULL`,
   `CREATE TABLE IF NOT EXISTS admin_password_reset_tokens (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     admin_id BIGINT UNSIGNED NOT NULL,
@@ -366,7 +367,20 @@ const schemaStatements = [
     ('sustainability', 'Sustainability', 9)`,
 ]
 
+const schemaVersion = 1
+
 export async function ensureSchema() {
+  await pool.query(`CREATE TABLE IF NOT EXISTS app_schema_versions (
+    version INT UNSIGNED PRIMARY KEY,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+
+  const appliedVersions = await pool.query<Array<{ version: number }>>(
+    "SELECT version FROM app_schema_versions WHERE version = ? LIMIT 1",
+    [schemaVersion],
+  )
+  if (appliedVersions[0]) return
+
   for (const statement of schemaStatements) {
     const compatibleStatement = statement
       .replace(/\bADD COLUMN IF NOT EXISTS\b/gi, 'ADD COLUMN')
@@ -384,4 +398,5 @@ export async function ensureSchema() {
     }
   }
   await ensureAssessmentSeed()
+  await pool.query("INSERT IGNORE INTO app_schema_versions (version) VALUES (?)", [schemaVersion])
 }

@@ -17,7 +17,7 @@ function FormThemeEditor({ value, disabled = false, onChange }: Props) {
   })
   const changeColor = (key: 'primaryColor' | 'backgroundColor' | 'progressColor' | 'progressTrackColor', color: string) => onChange({ ...value, preset: 'custom', [key]: color })
 
-  return <details className="activity-theme-editor" open>
+  return <details className="activity-theme-editor">
     <summary><span><small>ADVANCED FORM STYLE</small><strong>ปรับแต่งธีมแบบประเมินขั้นสูง</strong><em>สี ฟอนต์ ขนาดตัวอักษร พื้นหลัง และรูปทรงของฟอร์ม</em></span><b aria-hidden="true">⌄</b></summary>
     <div className="activity-theme-editor__body">
       <section className="activity-theme-presets" aria-labelledby="activity-theme-preset-title"><h3 id="activity-theme-preset-title">เลือกธีมสำเร็จรูป</h3><div>{FORM_THEME_PRESETS.map((preset) => <button type="button" className={value.preset === preset.id ? 'is-selected' : ''} disabled={disabled} key={preset.id} onClick={() => choosePreset(preset)}><i style={{ background: `linear-gradient(135deg, ${preset.primaryColor} 50%, ${preset.backgroundColor} 50%)` }} /><span>{preset.label}</span>{value.preset === preset.id && <b aria-hidden="true">✓</b>}</button>)}</div></section>

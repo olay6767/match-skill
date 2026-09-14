@@ -125,10 +125,10 @@ function StudentAssessmentPage({ token, onNavigate }: StudentAssessmentPageProps
   }
 
   if (!surveySession) {
-    return <main className="student-page"><section className="student-state-card"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>เซสชันแบบประเมินหมดอายุ</h1><p>กรุณายืนยันข้อมูลใหม่ก่อนเริ่มทำแบบประเมิน</p><button className="student-primary-button" type="button" onClick={() => onNavigate(`/s/${token}`, true)}>กลับไปยืนยันข้อมูล</button></section></main>
+    return <main className="student-page"><section className="student-state-card"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>เซสชันแบบประเมินหมดอายุ</h1><p>หากผู้ดูแลเพิ่มเวลาแล้ว คุณสามารถกลับเข้าด้วย QR หรือลิงก์เดิมและทำต่อจากคำตอบที่บันทึกไว้</p><button className="student-primary-button" type="button" onClick={() => onNavigate(`/s/${token}`, true)}>ตรวจสอบเวลาที่เพิ่ม</button></section></main>
   }
   if (timeRemaining === 0) {
-    return <main className="student-page"><section className="student-state-card"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>หมดเวลาทำแบบประเมิน</h1><p>กรุณายืนยันข้อมูลใหม่ หากผู้ดูแลยังเปิดกิจกรรมอยู่</p><button className="student-primary-button" type="button" onClick={() => onNavigate(`/s/${token}`, true)}>กลับไปหน้าเริ่มต้น</button></section></main>
+    return <main className="student-page"><section className="student-state-card"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>หมดเวลาทำแบบประเมิน</h1><p>หากผู้ดูแลเพิ่มเวลาแล้ว ให้ตรวจสอบอีกครั้งด้วย QR หรือลิงก์เดิม โดยไม่ต้องรับ QR ใหม่</p><button className="student-primary-button" type="button" onClick={() => onNavigate(`/s/${token}`, true)}>ตรวจสอบเวลาที่เพิ่ม</button></section></main>
   }
   if (error && !data) {
     return <main className="student-page"><section className="student-state-card"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>โหลดแบบประเมินไม่สำเร็จ</h1><p role="alert">{error}</p><button className="student-primary-button" type="button" onClick={() => { setError(''); setReloadNonce((value) => value + 1) }}>ลองใหม่</button></section></main>
@@ -136,7 +136,7 @@ function StudentAssessmentPage({ token, onNavigate }: StudentAssessmentPageProps
   if (!data || !currentQuestion) return <main className="student-page"><section className="student-state-card" role="status"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>กำลังโหลดแบบประเมิน</h1><p>โปรดรอสักครู่</p></section></main>
 
   const assessmentHeader = <AssessmentHeaderImage imageData={data.activity.imageData} activityName={data.activity.name} />
-  const themedPageClass = studentThemePageClass(data.activity.formTheme)
+  const themedPageClass = studentThemePageClass(data.activity.formTheme, 'student-page--assessment')
   const themedPageStyle = formThemeStyle(data.activity.formTheme)
   const hasAnsweredCurrentQuestion = answers[currentQuestion.questionId] !== undefined
   const updateAnswer = (levelValue: number) => {
@@ -211,13 +211,17 @@ function StudentAssessmentPage({ token, onNavigate }: StudentAssessmentPageProps
 
   return (
     <main className={themedPageClass} style={themedPageStyle}>
-      <section className="student-assessment-card">
+      <section className="student-assessment-card student-assessment-card--question">
         {assessmentHeader}
-        <p className="student-phase">{data.phase === 'pre' ? 'PRE-TEST' : 'POST-TEST'} · {data.activity.name}</p>
-        {timer}
+        <div className="student-assessment-session">
+          <p className="student-phase student-phase--activity"><span>{data.phase === 'pre' ? 'PRE-TEST' : 'POST-TEST'}</span><strong>{data.activity.name}</strong></p>
+          {timer}
+        </div>
         <AssessmentProgress current={currentIndex + 1} total={data.questions.length} />
-        <CompetencyQuestion question={currentQuestion} value={answers[currentQuestion.questionId]} onChange={updateAnswer} />
-        {!hasAnsweredCurrentQuestion && <p className="student-next-hint" role="status">กรุณาเลือกคำตอบ 1 ระดับก่อนดำเนินการต่อ</p>}
+        <div className="student-assessment-question-body" key={currentQuestion.questionId}>
+          <CompetencyQuestion question={currentQuestion} value={answers[currentQuestion.questionId]} onChange={updateAnswer} />
+          {!hasAnsweredCurrentQuestion && <p className="student-next-hint" role="status">กรุณาเลือกคำตอบ 1 ระดับก่อนดำเนินการต่อ</p>}
+        </div>
         {error && <p className="student-form-alert" role="alert">{error}</p>}
         <div className="student-assessment-actions">
           <button className="student-secondary-button" type="button" disabled={currentIndex === 0} onClick={() => setCurrentIndex((index) => index - 1)}>ก่อนหน้า</button>

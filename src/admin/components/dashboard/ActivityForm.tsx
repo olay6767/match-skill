@@ -4,14 +4,18 @@ import DatePickerField from '../../../shared/components/ui/DatePickerField'
 import ScrollableSelect from '../../../shared/components/ui/ScrollableSelect'
 import type { ActivityFormValues } from './activityFormModel'
 import FormThemeEditor from './FormThemeEditor'
+import RichTextEditor from './RichTextEditor'
+import { richTextToPlainText } from '../../../shared/richText'
 
 type Errors = Partial<Record<keyof ActivityFormValues, string>>
+const ACTIVITY_DETAIL_MAX_LENGTH = 10_000
+
 
 function validate(values: ActivityFormValues) {
   const errors: Errors = {}
   if (values.name.trim().length < 2) errors.name = 'กรุณากรอกชื่อกิจกรรมอย่างน้อย 2 ตัวอักษร'
   else if (values.name.trim().length > 255) errors.name = 'ชื่อกิจกรรมต้องไม่เกิน 255 ตัวอักษร'
-  if (values.detail.length > 255) errors.detail = 'รายละเอียดต้องไม่เกิน 255 ตัวอักษร'
+  if (richTextToPlainText(values.detail).length > ACTIVITY_DETAIL_MAX_LENGTH) errors.detail = 'รายละเอียดต้องไม่เกิน 10,000 ตัวอักษร'
   if ((values.location?.length ?? 0) > 255) errors.location = 'สถานที่ต้องไม่เกิน 255 ตัวอักษร'
   if ((values.targetGroup?.length ?? 0) > 120) errors.targetGroup = 'กลุ่มเป้าหมายต้องไม่เกิน 120 ตัวอักษร'
   if (!Number.isInteger(Number(values.participantLimit)) || Number(values.participantLimit) < 0 || Number(values.participantLimit) > 1_000_000) errors.participantLimit = 'จำนวนรองรับต้องเป็นจำนวนเต็ม 0–1,000,000'
@@ -81,7 +85,7 @@ function ActivityForm({ initialValues, createdAt, templates, submitLabel, onSubm
     const nextErrors = validate(values); setErrors(nextErrors)
     if (Object.keys(nextErrors).length) { setNotice('กรุณาตรวจสอบข้อมูลที่กรอก'); return }
     setIsSubmitting(true); setNotice('')
-    try { await onSubmit({ ...values, name: values.name.trim(), detail: values.detail.trim() }, intent); if (intent === 'draft') setNotice('บันทึก Draft เรียบร้อยแล้ว ระบบสร้างรหัสกิจกรรมให้โดยอัตโนมัติ') }
+    try { await onSubmit({ ...values, name: values.name.trim(), detail: values.detail.trim() }, intent); if (intent === 'draft') setNotice(submitLabel === 'บันทึกการแก้ไข' ? 'บันทึกการแก้ไขแล้ว · หากเพิ่มเวลา ผู้ที่ยังไม่ส่งจะกลับมาทำต่อด้วย QR เดิมได้' : 'บันทึก Draft เรียบร้อยแล้ว ระบบสร้างรหัสกิจกรรมให้อัตโนมัติ') }
     catch (error) { setNotice(error instanceof Error ? error.message : 'ไม่สามารถบันทึกกิจกรรมได้') }
     finally { setIsSubmitting(false) }
   }
@@ -99,17 +103,17 @@ function ActivityForm({ initialValues, createdAt, templates, submitLabel, onSubm
     catch (error) { setNotice(error instanceof Error ? error.message : 'ไม่สามารถใช้รูปภาพนี้ได้') }
     finally { setIsPreparingImage(false) }
   }
-  const activityPosterField = <div className="activity-form-field activity-poster-field"><span>1. โปสเตอร์ก่อนกรอกรหัสนักศึกษา</span><div className="activity-image-picker"><img src={values.imageData ?? '/seda-logo.png'} alt={values.imageData ? 'ตัวอย่างโปสเตอร์กิจกรรม' : 'โลโก้ SEDA เริ่มต้น'} /><div><label className="activity-image-upload"><strong>{isPreparingImage ? 'กำลังเตรียมรูปภาพ...' : values.imageData ? 'เปลี่ยนโปสเตอร์' : 'เลือกรูปโปสเตอร์'}</strong><input type="file" accept="image/png,image/jpeg,image/webp" disabled={isPreparingImage || isSubmitting} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void selectImage(file, 'imageData') }} /></label><p>ขนาดแนะนำ 1080 × 1600 px (แนวตั้ง) · PNG, JPEG หรือ WebP · ไม่เกิน 10 MB</p><p>แสดงก่อนช่องกรอกรหัสนักศึกษาเมื่อเปิดลิงก์หรือสแกน QR</p>{values.imageData && <button type="button" className="activity-image-remove" onClick={() => set('imageData', null)}>ลบรูปนี้และใช้โลโก้ SEDA</button>}</div></div></div>
-  const assessmentHeaderImageField = <div className="activity-form-field activity-assessment-image-field"><span>2. รูปหัวแบบประเมิน (แทนโลโก้ SEDA)</span><div className="activity-image-picker"><img src={values.assessmentImageData ?? '/seda-logo.png'} alt={values.assessmentImageData ? 'ตัวอย่างรูปหัวแบบประเมิน' : 'โลโก้ SEDA เริ่มต้น'} /><div><label className="activity-image-upload"><strong>{isPreparingImage ? 'กำลังเตรียมรูปภาพ...' : values.assessmentImageData ? 'เปลี่ยนรูปหัวแบบประเมิน' : 'เลือกรูปหัวแบบประเมิน'}</strong><input type="file" accept="image/png,image/jpeg,image/webp" disabled={isPreparingImage || isSubmitting} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void selectImage(file, 'assessmentImageData') }} /></label><p>ขนาดแนะนำ 1200 × 360 px (แนวนอน) · PNG, JPEG หรือ WebP · ไม่เกิน 10 MB</p><p>รูปนี้จะแสดงแทนโลโก้ SEDA ภายในกรอบด้านบนของคำถามและหน้าตรวจสอบคำตอบ</p>{values.assessmentImageData && <button type="button" className="activity-image-remove" onClick={() => set('assessmentImageData', null)}>ลบรูปนี้และใช้โลโก้ SEDA</button>}</div></div></div>
+  const activityPosterField = <div className="activity-form-field activity-poster-field"><span>โปสเตอร์กิจกรรม</span><div className="activity-image-picker"><img src={values.imageData ?? '/seda-logo.png'} alt={values.imageData ? 'ตัวอย่างโปสเตอร์กิจกรรม' : 'โลโก้ SEDA เริ่มต้น'} /><div><label className="activity-image-upload"><strong>{isPreparingImage ? 'กำลังเตรียมรูปภาพ...' : values.imageData ? 'เปลี่ยนโปสเตอร์' : 'เลือกรูปโปสเตอร์'}</strong><input type="file" accept="image/png,image/jpeg,image/webp" disabled={isPreparingImage || isSubmitting} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void selectImage(file, 'imageData') }} /></label>{values.imageData && <button type="button" className="activity-image-remove" onClick={() => set('imageData', null)}>ลบรูปนี้และใช้โลโก้ SEDA</button>}</div></div></div>
+  const assessmentHeaderImageField = <div className="activity-form-field activity-assessment-image-field"><span>รูปหัวแบบประเมิน</span><div className="activity-image-picker"><img src={values.assessmentImageData ?? '/seda-logo.png'} alt={values.assessmentImageData ? 'ตัวอย่างรูปหัวแบบประเมิน' : 'โลโก้ SEDA เริ่มต้น'} /><div><label className="activity-image-upload"><strong>{isPreparingImage ? 'กำลังเตรียมรูปภาพ...' : values.assessmentImageData ? 'เปลี่ยนรูปหัวแบบประเมิน' : 'เลือกรูปหัวแบบประเมิน'}</strong><input type="file" accept="image/png,image/jpeg,image/webp" disabled={isPreparingImage || isSubmitting} onChange={(event) => { const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; void selectImage(file, 'assessmentImageData') }} /></label>{values.assessmentImageData && <button type="button" className="activity-image-remove" onClick={() => set('assessmentImageData', null)}>ลบรูปนี้และใช้โลโก้ SEDA</button>}</div></div></div>
 
   return <form className="shared-activity-form google-forms-activity-form" noValidate onSubmit={(event: FormEvent<HTMLFormElement>) => { event.preventDefault(); void submit('draft') }}>
     <header className="activity-form-intro">
-      <div><span>รายละเอียดกิจกรรม</span><h2>ข้อมูลสำหรับสร้างกิจกรรม</h2><p>ช่องที่มีเครื่องหมาย * จำเป็นต้องกรอก ข้อมูลส่วนอื่นเพิ่มหรือแก้ไขภายหลังได้</p></div>
+      <div><span>รายละเอียดกิจกรรม</span><h2>ข้อมูลสำหรับสร้างกิจกรรม</h2></div>
       <small>Draft</small>
     </header>
     <div className="activity-created-date"><span>วันที่สร้างกิจกรรม</span><strong>{createdDate}</strong></div>
-    <section className="activity-media-section" aria-labelledby="activity-media-title"><div className="activity-media-section__heading"><span>รูปภาพกิจกรรม</span><strong id="activity-media-title">เลือกรูปแยกตามตำแหน่งที่แสดง</strong><p>รูปทั้งสองช่องเป็นคนละไฟล์ สามารถเพิ่ม เปลี่ยน หรือลบแยกกันได้</p></div><div className="activity-media-grid">{activityPosterField}{assessmentHeaderImageField}</div></section>
-    <div className="activity-form-grid">{field('name', 'ชื่อกิจกรรม *')}<label className="activity-form-field activity-form-field--wide"><span>รายละเอียด</span><textarea maxLength={255} value={values.detail} aria-invalid={Boolean(errors.detail)} onChange={(event) => set('detail', event.target.value)} />{errors.detail && <small role="alert">{errors.detail}</small>}</label>{field('location', 'สถานที่')}{field('targetGroup', 'กลุ่มเป้าหมาย')}{field('participantLimit', 'จำนวนรองรับ', 'number')}{dateField('startDate', 'วันที่เริ่มกิจกรรม')}{field('preTestDurationMinutes', 'ระยะเวลาทำ Pre-test (นาที)', 'number')}{field('postTestDurationMinutes', 'ระยะเวลาทำ Post-test (นาที)', 'number')}
+    <section className="activity-media-section" aria-labelledby="activity-media-title"><div className="activity-media-section__heading"><span>รูปภาพกิจกรรม</span><strong id="activity-media-title">ภาพที่ใช้ในกิจกรรม</strong></div><div className="activity-media-grid">{activityPosterField}{assessmentHeaderImageField}</div></section>
+    <div className="activity-form-grid">{field('name', 'ชื่อกิจกรรม *')}<div className="activity-form-field activity-form-field--wide"><span>รายละเอียด</span><RichTextEditor value={values.detail} maxLength={ACTIVITY_DETAIL_MAX_LENGTH} invalid={Boolean(errors.detail)} onChange={(detail) => set('detail', detail)} />{errors.detail && <small role="alert">{errors.detail}</small>}</div>{field('location', 'สถานที่')}{field('targetGroup', 'กลุ่มเป้าหมาย')}{field('participantLimit', 'จำนวนรองรับ', 'number')}{dateField('startDate', 'วันที่เริ่มกิจกรรม')}{field('preTestDurationMinutes', 'ระยะเวลาทำ Pre-test (นาที)', 'number')}{field('postTestDurationMinutes', 'ระยะเวลาทำ Post-test (นาที)', 'number')}
       <ScrollableSelect className="activity-form-field activity-form-template-select" label="แบบประเมิน" value={values.surveyTemplateId ? String(values.surveyTemplateId) : ''} options={[{ value: '', label: 'ยังไม่เลือก' }, ...templates.map((template) => ({ value: String(template.id), label: template.name }))]} onChange={(surveyTemplateId) => set('surveyTemplateId', surveyTemplateId ? Number(surveyTemplateId) : null)} />
     </div>
     <FormThemeEditor value={values.formTheme} disabled={isSubmitting} onChange={(formTheme) => set('formTheme', formTheme)} />

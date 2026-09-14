@@ -98,7 +98,7 @@ function ActivityDetailPage({ activityId, adminEmail, canDelete, onLogout, onNav
       const nextActivity = await updateActivityPhase(activity.id, phase, isExpired(savedCloseAt) ? { enabled: !open, closeAt: null } : { enabled: !open })
       setActivity(nextActivity)
       setCloseAtDraft({ pre: toDateTimeLocal(nextActivity.preCloseAt), post: toDateTimeLocal(nextActivity.postCloseAt) })
-      setNotice((open ? 'ปิด ' : 'เปิด ') + (phase === 'pre' ? 'Pre-test' : 'Post-test') + ' แล้ว')
+      setNotice((open ? 'ปิด ' : 'เปิด ') + (phase === 'pre' ? 'Pre-test' : 'Post-test') + (open ? ' แล้ว' : ' แล้ว · QR เดิมยังใช้งานได้ และผู้ที่ยังไม่ส่งสามารถกลับมาทำต่อได้'))
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'ไม่สามารถเปลี่ยนสถานะแบบทดสอบได้')
     } finally {
@@ -113,7 +113,7 @@ function ActivityDetailPage({ activityId, adminEmail, canDelete, onLogout, onNav
       const nextActivity = await updateActivityPhase(activity.id, phase, { closeAt })
       setActivity(nextActivity)
       setCloseAtDraft({ pre: toDateTimeLocal(nextActivity.preCloseAt), post: toDateTimeLocal(nextActivity.postCloseAt) })
-      setNotice(closeAt ? 'ตั้งเวลาปิด ' + (phase === 'pre' ? 'Pre-test' : 'Post-test') + ' แล้ว' : 'ยกเลิกเวลาปิด ' + (phase === 'pre' ? 'Pre-test' : 'Post-test') + ' แล้ว')
+      setNotice(closeAt ? 'บันทึกเวลาปิด ' + (phase === 'pre' ? 'Pre-test' : 'Post-test') + ' แล้ว · ต่อเวลาให้ผู้ที่ยังไม่ส่ง และใช้ QR เดิมได้' : 'ยกเลิกเวลาปิด ' + (phase === 'pre' ? 'Pre-test' : 'Post-test') + ' แล้ว · QR เดิมยังใช้งานได้')
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'ไม่สามารถบันทึกเวลาปิดได้')
     } finally {

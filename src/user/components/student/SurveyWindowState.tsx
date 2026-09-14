@@ -45,7 +45,7 @@ function SurveyWindowState({ kind, onRetry }: SurveyWindowStateProps) {
   const isError = kind === 'invalid' || kind === 'network-error'
 
   return (
-    <section className="student-state-card" aria-live="polite">
+    <section className={`student-state-card student-state-card--window student-state-card--${kind}`} aria-live="polite" aria-busy={isLoading}>
       <img className="student-logo" src="/seda-logo.png" alt="SEDA" />
       <span className={`student-state-icon student-state-icon--${isError ? 'error' : isLoading ? 'loading' : 'neutral'}`} aria-hidden="true">
         <Icon name={isLoading ? 'loading' : isError ? 'error' : 'info'} />

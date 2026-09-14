@@ -37,6 +37,10 @@ export type IconName =
   | 'trendFlat'
   | 'info'
   | 'error'
+  | 'email'
+  | 'phone'
+  | 'faculty'
+  | 'education'
   | 'loading'
 
 const materialSymbolNames: Record<IconName, string> = {
@@ -78,6 +82,10 @@ const materialSymbolNames: Record<IconName, string> = {
   trendFlat: 'trending_flat',
   info: 'info',
   error: 'error',
+  email: 'mail',
+  phone: 'phone_in_talk',
+  faculty: 'apartment',
+  education: 'school',
   loading: 'progress_activity',
 }
 

@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react'
 import { getCurrentAdmin } from '../../../lib/api'
 import Button from '../../../shared/components/ui/Button'
 import Icon, { type IconName } from '../../../shared/components/ui/Icon'
+import dashboardArtwork from '../../../assets/1.png'
+import assessmentArtwork from '../../../assets/2.png'
+import participantArtwork from '../../../assets/4.png'
+import reportArtwork from '../../../assets/5.png'
+import activityArtwork from '../../../assets/20.png'
+import administratorIcon from '../../../assets/741.png'
+import analyticsArtwork from '../../../assets/7778.png'
 
 export type DashboardNav = 'Dashboard' | 'Activities' | 'Assessments' | 'Participants' | 'Analytics' | 'Reports' | 'Staff'
 
@@ -17,20 +24,30 @@ type DashboardSidebarProps = {
 const navigationItems: Array<[IconName, Exclude<DashboardNav, 'Dashboard'>, string]> = [
   ['activities', 'Activities', 'กิจกรรม'],
   ['assessments', 'Assessments', 'พรีวิวแบบประเมิน'],
-  ['participants', 'Participants', 'นักศึกษาและผู้เข้าร่วม'],
+  ['participants', 'Participants', 'ผู้เข้าร่วม'],
   ['analytics', 'Analytics', 'วิเคราะห์ผล'],
   ['reports', 'Reports', 'รายงาน'],
   ['admin', 'Staff', 'ผู้ดูแลระบบ'],
 ]
 
+const navigationArtwork: Partial<Record<DashboardNav, string>> = {
+  Dashboard: dashboardArtwork,
+  Activities: activityArtwork,
+  Assessments: assessmentArtwork,
+  Participants: participantArtwork,
+  Analytics: analyticsArtwork,
+  Reports: reportArtwork,
+  Staff: administratorIcon,
+}
+
 function DashboardSidebar({ adminEmail, onLogout, activeNav, onNavigate, isOpen, onClose }: DashboardSidebarProps) {
-  const [role, setRole] = useState<string | null>(null)
+  const [role, setRole] = useState<string | null | undefined>(undefined)
 
   useEffect(() => {
     getCurrentAdmin().then((admin) => setRole(admin.role)).catch(() => setRole(null))
   }, [])
 
-  const visibleNavigationItems = role === 'super_admin'
+  const visibleNavigationItems = role === 'super_admin' || role === undefined
     ? navigationItems
     : navigationItems.filter(([, item]) => item !== 'Reports' && item !== 'Staff')
 
@@ -47,7 +64,8 @@ function DashboardSidebar({ adminEmail, onLogout, activeNav, onNavigate, isOpen,
           className={`sidebar-link${activeNav === 'Dashboard' ? ' sidebar-link--active' : ''}`}
           onClick={() => onNavigate('Dashboard')}
         >
-          <Icon name="dashboard" /> ภาพรวม
+          <img className="sidebar-link__image sidebar-link__image--dashboard" src={navigationArtwork.Dashboard} alt="" aria-hidden="true" />
+          <span className="sidebar-link__label">ภาพรวม</span>
         </Button>
         {visibleNavigationItems.map(([icon, label, displayLabel]) => (
           <Button
@@ -55,7 +73,10 @@ function DashboardSidebar({ adminEmail, onLogout, activeNav, onNavigate, isOpen,
             key={label}
             onClick={() => onNavigate(label)}
           >
-            <Icon name={icon} /> {displayLabel}
+            {navigationArtwork[label]
+              ? <img className={`sidebar-link__image sidebar-link__image--${label.toLowerCase()}`} src={navigationArtwork[label]} alt="" aria-hidden="true" />
+              : <Icon name={icon} />}
+            <span className="sidebar-link__label">{displayLabel}</span>
           </Button>
         ))}
       </nav>

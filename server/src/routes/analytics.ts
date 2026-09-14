@@ -72,6 +72,7 @@ function queryArray(value: unknown) {
 
 const finalAnalysisSchema = z.object({
   activityId: z.coerce.number().int().positive(),
+  faculty: z.preprocess(queryArray, z.array(z.string().trim().min(1).max(150))),
   major: z.preprocess(queryArray, z.array(z.string().trim().min(1).max(150))),
   educationLevel: z.preprocess(queryArray, z.array(z.string().trim().min(1).max(80))),
   studyYear: z.preprocess(queryArray, z.array(z.coerce.number().int().min(1).max(10))),
@@ -81,6 +82,7 @@ const finalAnalysisSchema = z.object({
   }, z.array(z.enum(['pre', 'post'])).min(1)),
 }).transform((value) => ({
   activityId: value.activityId,
+  faculties: Array.from(new Set(value.faculty)),
   majors: Array.from(new Set(value.major)),
   educationLevels: Array.from(new Set(value.educationLevel)),
   studyYears: Array.from(new Set(value.studyYear)),

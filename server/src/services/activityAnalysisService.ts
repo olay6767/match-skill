@@ -1,4 +1,3 @@
-import ExcelJS from 'exceljs'
 import { pool } from '../db/pool.js'
 
 export type ActivityAnalysisMode = 'comparison'
@@ -487,6 +486,7 @@ export async function getCombinedActivityAnalysis(input: CombinedActivityAnalysi
 
 export async function createCombinedActivityAnalysisExport(input: CombinedActivityAnalysisInput) {
   const report = await getCombinedActivityAnalysis({ ...input, page: 1, pageSize: Math.max(input.activityIds.length, 1), chartLimit: 0 })
+  const { default: ExcelJS } = await import('exceljs')
   const workbook = new ExcelJS.Workbook()
   workbook.creator = 'SEDA Activity Evaluation System'
   workbook.created = new Date()

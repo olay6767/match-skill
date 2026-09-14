@@ -143,13 +143,15 @@ function limitIdentifyAttempts(ip: string, token: string) {
   current.count += 1
 }
 
-function surveyStatusQuery(lock = false) {
+function surveyStatusQuery(lock = false, includePresentation = true) {
+  const presentationFields = includePresentation
+    ? "a.name, a.cover_image_data, a.form_theme_json,"
+    : "'' AS name, NULL AS cover_image_data, NULL AS form_theme_json,"
+
   return `SELECT
     q.id AS qr_id,
     q.activity_id,
-    a.name,
-    a.cover_image_data,
-    a.form_theme_json,
+    ${presentationFields}
     q.phase,
     CASE WHEN q.phase = 'pre' THEN a.pre_test_duration_minutes ELSE a.post_test_duration_minutes END AS duration_minutes,
     CASE
@@ -325,7 +327,7 @@ publicSurveyRouter.post('/:token/identify', async (request, response) => {
 
   try {
     await connection.beginTransaction()
-    const surveyRows = await connection.query<SurveyRow[]>(surveyStatusQuery(true), [token])
+    const surveyRows = await connection.query<SurveyRow[]>(surveyStatusQuery(true, false), [token])
     const survey = ensureReadableSurvey(surveyRows[0])
     if (survey.window_status !== 'open') {
       const statusMessage: Record<Exclude<SurveyStatus, 'invalid' | 'open'>, string> = {

@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import type { PoolConnection } from 'mariadb'
 import { z } from 'zod'
 import { pool } from '../db/pool.js'
 import { ApiError } from '../lib/http.js'
@@ -17,7 +18,7 @@ const activityImageData = z.string()
 
 const activityFieldSchemas = {
   name: z.string().trim().min(2).max(255),
-  detail: z.string().trim().max(255),
+  detail: z.string().trim().max(10_000),
   imageData: activityImageData,
   assessmentImageData: activityImageData,
   formTheme: formThemeSchema,
@@ -204,6 +205,39 @@ async function findActivity(id: number) {
   return rows[0] ? serializeActivity(rows[0]) : null
 }
 
+async function addTimeToIncompleteSurveySessions(connection: PoolConnection, activityId: number, phase: 'pre' | 'post', minutes: number) {
+  if (minutes <= 0) return
+  await connection.query(
+    `UPDATE survey_sessions ss
+     SET ss.expires_at = TIMESTAMPADD(MINUTE, ?, GREATEST(ss.expires_at, NOW()))
+     WHERE ss.activity_id = ? AND ss.phase = ?
+       AND NOT EXISTS (
+         SELECT 1 FROM survey_responses sr
+         WHERE sr.activity_id = ss.activity_id AND sr.student_id = ss.student_id AND sr.phase = ss.phase
+       )`,
+    [minutes, activityId, phase],
+  )
+}
+
+async function resumeIncompleteSurveySessions(connection: PoolConnection, activityId: number, phase: 'pre' | 'post', durationMinutes: number, closeAt: Date | string | null) {
+  const nextExpirySql = closeAt
+    ? 'LEAST(TIMESTAMPADD(MINUTE, ?, NOW()), ?)'
+    : 'TIMESTAMPADD(MINUTE, ?, NOW())'
+  const values: Array<number | string | Date> = closeAt
+    ? [durationMinutes, closeAt, activityId, phase]
+    : [durationMinutes, activityId, phase]
+  await connection.query(
+    `UPDATE survey_sessions ss
+     SET ss.expires_at = GREATEST(ss.expires_at, ${nextExpirySql})
+     WHERE ss.activity_id = ? AND ss.phase = ?
+       AND NOT EXISTS (
+         SELECT 1 FROM survey_responses sr
+         WHERE sr.activity_id = ss.activity_id AND sr.student_id = ss.student_id AND sr.phase = ss.phase
+       )`,
+    values,
+  )
+}
+
 export const activitiesRouter = Router()
 activitiesRouter.use(requireAdmin)
 
@@ -317,12 +351,26 @@ activitiesRouter.patch('/:id', async (request, response) => {
   if (body.preTestDurationMinutes !== undefined) addUpdate('pre_test_duration_minutes', body.preTestDurationMinutes)
   if (body.postTestDurationMinutes !== undefined) addUpdate('post_test_duration_minutes', body.postTestDurationMinutes)
 
-  values.push(id)
-  const result = await pool.query(
-    `UPDATE activities SET ${updates.join(', ')} WHERE id = ?`,
-    values,
-  )
-  if (result.affectedRows === 0) throw new ApiError(404, 'ไม่พบกิจกรรม')
+  const preExtension = body.preTestDurationMinutes === undefined ? 0 : Math.max(0, body.preTestDurationMinutes - existing.preTestDurationMinutes)
+  const postExtension = body.postTestDurationMinutes === undefined ? 0 : Math.max(0, body.postTestDurationMinutes - existing.postTestDurationMinutes)
+  const connection = await pool.getConnection()
+  try {
+    await connection.beginTransaction()
+    values.push(id)
+    const result = await connection.query(
+      `UPDATE activities SET ${updates.join(', ')} WHERE id = ?`,
+      values,
+    )
+    if (result.affectedRows === 0) throw new ApiError(404, 'ไม่พบกิจกรรม')
+    await addTimeToIncompleteSurveySessions(connection, id, 'pre', preExtension)
+    await addTimeToIncompleteSurveySessions(connection, id, 'post', postExtension)
+    await connection.commit()
+  } catch (error) {
+    await connection.rollback()
+    throw error
+  } finally {
+    connection.release()
+  }
 
   response.json({ activity: await findActivity(id) })
 })
@@ -384,31 +432,66 @@ activitiesRouter.patch('/:id/phases/:phase', async (request, response) => {
     const closeAtTime = new Date(settings.closeAt).getTime()
     if (Number.isNaN(closeAtTime) || closeAtTime <= Date.now()) throw new ApiError(400, 'เวลาปิดต้องอยู่ในอนาคต')
   }
-  const rows = await pool.query<Array<{ status: ActivityRow['status']; pre_test_enabled: number | boolean; post_test_enabled: number | boolean }>>(
-    'SELECT status, pre_test_enabled, post_test_enabled FROM activities WHERE id = ? LIMIT 1', [id],
-  )
-  const activity = rows[0]
-  if (!activity) throw new ApiError(404, 'ไม่พบกิจกรรม')
-  if (activity.status === 'archived') throw new ApiError(409, 'กิจกรรมนี้ถูกเก็บถาวรแล้ว')
 
   const column = phase === 'pre' ? 'pre_test_enabled' : 'post_test_enabled'
   const closeColumn = phase === 'pre' ? 'pre_close_at' : 'post_close_at'
-  const updates: string[] = []
-  const values: Array<string | number | boolean | null> = []
+  const connection = await pool.getConnection()
 
-  if (settings.enabled !== undefined) {
-    const otherPhaseEnabled = phase === 'pre' ? Boolean(Number(activity.post_test_enabled)) : Boolean(Number(activity.pre_test_enabled))
-    const nextStatus: ActivityRow['status'] = settings.enabled || otherPhaseEnabled ? 'active' : 'closed'
-    updates.push(column + ' = ?', 'status = ?', 'archived_at = NULL')
-    values.push(settings.enabled, nextStatus)
-  }
-  if (settings.closeAt !== undefined) {
-    updates.push(closeColumn + ' = ?')
-    values.push(settings.closeAt ? settings.closeAt.replace('T', ' ') : null)
+  try {
+    await connection.beginTransaction()
+    const rows = await connection.query<Array<{
+      status: ActivityRow['status']
+      pre_test_enabled: number | boolean
+      post_test_enabled: number | boolean
+      pre_close_at: Date | string | null
+      post_close_at: Date | string | null
+      pre_test_duration_minutes: number
+      post_test_duration_minutes: number
+    }>>(
+      `SELECT status, pre_test_enabled, post_test_enabled, pre_close_at, post_close_at,
+              pre_test_duration_minutes, post_test_duration_minutes
+       FROM activities WHERE id = ? LIMIT 1 FOR UPDATE`,
+      [id],
+    )
+    const activity = rows[0]
+    if (!activity) throw new ApiError(404, 'ไม่พบกิจกรรม')
+    if (activity.status === 'archived') throw new ApiError(409, 'กิจกรรมนี้ถูกเก็บถาวรแล้ว')
+
+    const updates: string[] = []
+    const values: Array<string | number | boolean | null> = []
+    if (settings.enabled !== undefined) {
+      const otherPhaseEnabled = phase === 'pre' ? Boolean(Number(activity.post_test_enabled)) : Boolean(Number(activity.pre_test_enabled))
+      const nextStatus: ActivityRow['status'] = settings.enabled || otherPhaseEnabled ? 'active' : 'closed'
+      updates.push(column + ' = ?', 'status = ?', 'archived_at = NULL')
+      values.push(settings.enabled, nextStatus)
+    }
+    if (settings.closeAt !== undefined) {
+      updates.push(closeColumn + ' = ?')
+      values.push(settings.closeAt ? settings.closeAt.replace('T', ' ') : null)
+    }
+
+    values.push(id)
+    await connection.query('UPDATE activities SET ' + updates.join(', ') + ' WHERE id = ?', values)
+
+    const currentEnabled = phase === 'pre' ? Boolean(Number(activity.pre_test_enabled)) : Boolean(Number(activity.post_test_enabled))
+    const nextEnabled = settings.enabled ?? currentEnabled
+    const currentCloseAt = phase === 'pre' ? activity.pre_close_at : activity.post_close_at
+    const nextCloseAt = settings.closeAt !== undefined ? settings.closeAt : currentCloseAt
+    const closeAtTime = nextCloseAt ? new Date(nextCloseAt).getTime() : null
+    const windowWillBeOpen = nextEnabled && (closeAtTime === null || closeAtTime > Date.now())
+    if (windowWillBeOpen && (settings.enabled === true || settings.closeAt !== undefined)) {
+      const durationMinutes = phase === 'pre' ? Number(activity.pre_test_duration_minutes) : Number(activity.post_test_duration_minutes)
+      await resumeIncompleteSurveySessions(connection, id, phase, Math.max(1, durationMinutes || 15), nextCloseAt)
+    }
+
+    await connection.commit()
+  } catch (error) {
+    await connection.rollback()
+    throw error
+  } finally {
+    connection.release()
   }
 
-  values.push(id)
-  await pool.query('UPDATE activities SET ' + updates.join(', ') + ' WHERE id = ?', values)
   response.json({ activity: await findActivity(id) })
 })
 

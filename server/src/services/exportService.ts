@@ -1,17 +1,16 @@
 import ExcelJS from 'exceljs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { pool } from '../db/pool.js'
 import { ApiError } from '../lib/http.js'
+import { buildActivityReportWorkbook } from './activityReportWorkbook.js'
 
 export type ReportFilters = { activityId: number }
-type ActivityRow = { id: number; code: string | null; name: string }
+type ActivityRow = { id: number; code: string | null; name: string; activity_date: Date | string | null; start_date: Date | string | null; participant_limit: number | string }
 type RawAnswerRow = { student_code: string; first_name: string | null; last_name: string | null; email: string | null; faculty: string | null; major: string | null; study_year: number | string | null; education_level: string | null; phone: string | null; activity_code: string | null; activity_name: string; phase: 'pre' | 'post'; submitted_at: Date | string; competency_code: string; competency_name: string; score: number | string }
-type FinalAnswerRow = { student_id: number | string; student_code: string; first_name: string | null; last_name: string | null; faculty: string | null; major: string | null; study_year: number | string | null; phase: 'pre' | 'post'; display_order: number | string; score: number | string }
+type FinalAnswerRow = { student_id: number | string; student_code: string; full_name: string | null; first_name: string | null; last_name: string | null; faculty: string | null; major: string | null; study_year: number | string | null; phase: 'pre' | 'post' | null; display_order: number | string | null; score: number | string | null }
 export type FinalSheetStudent = { studentCode: string; name: string; faculty: string; major: string; studyYear: number | string | null; preScores: Map<number, number>; postScores: Map<number, number> }
-type FinalQuestionRow = { display_order: number | string }
+type ActivityReportStudent = FinalSheetStudent & { preCompleted: boolean; postCompleted: boolean }
+type FinalQuestionRow = { code: string; name: string; display_order: number | string }
 
-const finalTemplatePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../assets/Final-template.xlsx')
 const finalDataStartRow = 3
 const finalTemplateDataEndRow = 88
 const finalTemplateStatsRow = 90
@@ -83,14 +82,6 @@ function columnLetter(column: number) {
     value = Math.floor((value - 1) / 26)
   }
   return result
-}
-
-function normalizeSharedFormulas(sheet: ExcelJS.Worksheet) {
-  sheet.eachRow({ includeEmpty: false }, (row) => {
-    row.eachCell({ includeEmpty: false }, (cell) => {
-      if (cell.formula) cell.value = { formula: cell.formula, result: cell.result }
-    })
-  })
 }
 
 function prepareFinalStudentColumns(sheet: ExcelJS.Worksheet) {
@@ -165,17 +156,22 @@ function clearTrailingRows(sheet: ExcelJS.Worksheet, startRow: number) {
 }
 
 function finalStudents(rows: FinalAnswerRow[]) {
-  const students = new Map<string, FinalSheetStudent>()
+  const students = new Map<string, ActivityReportStudent>()
   for (const answer of rows) {
     const studentKey = String(answer.student_id)
     let student = students.get(studentKey)
     if (!student) {
-      const name = [answer.first_name, answer.last_name].filter(Boolean).join(' ').trim() || answer.student_code
-      student = { studentCode: answer.student_code, name, faculty: answer.faculty ?? '', major: answer.major ?? '', studyYear: answer.study_year, preScores: new Map(), postScores: new Map() }
+      const name = [answer.first_name, answer.last_name].filter(Boolean).join(' ').trim() || answer.full_name?.trim() || answer.student_code
+      student = { studentCode: answer.student_code, name, faculty: answer.faculty ?? '', major: answer.major ?? '', studyYear: answer.study_year, preCompleted: false, postCompleted: false, preScores: new Map(), postScores: new Map() }
       students.set(studentKey, student)
     }
+    if (answer.phase === 'pre') student.preCompleted = true
+    if (answer.phase === 'post') student.postCompleted = true
     const score = Number(answer.score)
-    if (Number.isFinite(score)) (answer.phase === 'pre' ? student.preScores : student.postScores).set(Number(answer.display_order), score)
+    const displayOrder = Number(answer.display_order)
+    if (answer.phase && answer.score !== null && answer.display_order !== null && Number.isFinite(score) && Number.isFinite(displayOrder)) {
+      (answer.phase === 'pre' ? student.preScores : student.postScores).set(displayOrder, score)
+    }
   }
   return Array.from(students.values()).sort((left, right) => left.studentCode.localeCompare(right.studentCode, 'th'))
 }
@@ -336,22 +332,6 @@ export function writeFinalTemplateSheet(sheet: ExcelJS.Worksheet, students: Fina
   sheet.pageSetup.printArea = `A1:${columnLetter(finalLastColumn)}${averageRow}`
 }
 
-async function loadFinalTemplate() {
-  const workbook = new ExcelJS.Workbook()
-  try {
-    await workbook.xlsx.readFile(finalTemplatePath)
-  } catch {
-    throw new ApiError(500, 'ไม่พบหรือไม่สามารถอ่านไฟล์ template สำหรับรายงาน Final ได้ กรุณาติดต่อผู้ดูแลระบบ')
-  }
-  const finalSheet = workbook.getWorksheet('Final')
-  if (!finalSheet) throw new ApiError(500, 'ไม่พบ worksheet ชื่อ Final ในไฟล์ template')
-  normalizeSharedFormulas(finalSheet)
-  for (const sheet of workbook.worksheets.filter((sheet) => sheet.id !== finalSheet.id)) workbook.removeWorksheet(sheet.id)
-  if (workbook.worksheets.length !== 1 || workbook.worksheets[0]?.name !== 'Final') throw new ApiError(500, 'ไม่สามารถเตรียม worksheet Final สำหรับการส่งออกได้')
-  workbook.calcProperties.fullCalcOnLoad = true
-  return { workbook, finalSheet }
-}
-
 function responseFilter(filters: ReportFilters) {
   return {
     sql: 'WHERE sr.activity_id = ?',
@@ -360,7 +340,7 @@ function responseFilter(filters: ReportFilters) {
 }
 
 async function activityFor(filters: ReportFilters) {
-  const rows = await pool.query<ActivityRow[]>('SELECT id, code, name FROM activities WHERE id = ? LIMIT 1', [filters.activityId])
+  const rows = await pool.query<ActivityRow[]>('SELECT id, code, name, activity_date, start_date, participant_limit FROM activities WHERE id = ? LIMIT 1', [filters.activityId])
   if (!rows[0]) throw new ApiError(404, 'ไม่พบกิจกรรมที่เลือก')
   return rows[0]
 }
@@ -412,43 +392,63 @@ export async function createRawExport(filters: ReportFilters) {
 }
 
 export async function createFinalExport(filters: ReportFilters) {
-  const filter = responseFilter(filters)
   const [activity, questions, answers] = await Promise.all([
     activityFor(filters),
     pool.query<FinalQuestionRow[]>(`
-      SELECT q.display_order
+      SELECT c.code, c.name, q.display_order
       FROM activities a
       JOIN questions q ON q.template_id = a.survey_template_id
+      JOIN competencies c ON c.id = q.competency_id
       WHERE a.id = ? AND q.is_required = TRUE
       ORDER BY q.display_order ASC`, [filters.activityId]),
     pool.query<FinalAnswerRow[]>(`
-      SELECT s.id AS student_id, s.student_code, s.first_name, s.last_name, s.faculty, s.major, s.study_year, sr.phase,
+      SELECT s.id AS student_id, s.student_code, s.full_name, s.first_name, s.last_name, s.faculty, s.major, s.study_year, sr.phase,
         c.display_order, ra.score
-      FROM survey_responses sr
-      JOIN students s ON s.id = sr.student_id
-      JOIN response_answers ra ON ra.response_id = sr.id
-      JOIN competencies c ON c.id = ra.competency_id
-      ${filter.sql}
-        AND EXISTS (
-          SELECT 1 FROM survey_responses paired_response
-          WHERE paired_response.activity_id = sr.activity_id
-            AND paired_response.student_id = sr.student_id
-          GROUP BY paired_response.activity_id, paired_response.student_id
-          HAVING SUM(paired_response.phase = 'pre') > 0 AND SUM(paired_response.phase = 'post') > 0
-        )
-      ORDER BY s.student_code ASC, c.display_order ASC, sr.submitted_at ASC`, filter.values),
+      FROM (
+        SELECT student_id FROM survey_sessions WHERE activity_id = ?
+        UNION
+        SELECT student_id FROM survey_responses WHERE activity_id = ?
+      ) registered
+      JOIN students s ON s.id = registered.student_id
+      LEFT JOIN survey_responses sr ON sr.activity_id = ? AND sr.student_id = s.id
+      LEFT JOIN response_answers ra ON ra.response_id = sr.id
+      LEFT JOIN competencies c ON c.id = ra.competency_id
+      ORDER BY s.student_code ASC, c.display_order ASC, sr.submitted_at ASC`, [filters.activityId, filters.activityId, filters.activityId]),
   ])
   const questionOrders = questions.map((question) => Number(question.display_order))
   if (questionOrders.length !== finalCompetencyCount || questionOrders.some((order, index) => order !== index + 1)) {
-    throw new ApiError(422, 'รายงาน Final รองรับแบบประเมิน IMPACTS3 ที่มีสมรรถนะ 9 ด้านเท่านั้น')
+    throw new ApiError(422, "รายงาน Final รองรับแบบประเมิน IMPACTS3 ที่มีสมรรถนะ 9 ด้านเท่านั้น")
   }
-  const { workbook, finalSheet } = await loadFinalTemplate()
   const students = finalStudents(answers)
-  writeFinalTemplateSheet(finalSheet, students)
+  const workbook = buildActivityReportWorkbook({
+    activity: {
+      id: Number(activity.id),
+      code: activity.code,
+      name: activity.name,
+      date: activity.start_date ?? activity.activity_date,
+      participantLimit: Number(activity.participant_limit),
+    },
+    competencies: questions.map((question) => ({
+      code: question.code,
+      name: question.name,
+      displayOrder: Number(question.display_order),
+    })),
+    students: students.map((student) => ({
+      studentCode: student.studentCode,
+      name: student.name,
+      faculty: student.faculty,
+      program: student.major,
+      studyYear: student.studyYear,
+      preCompleted: student.preCompleted,
+      postCompleted: student.postCompleted,
+      preScores: student.preScores,
+      postScores: student.postScores,
+    })),
+  })
   return { activity, filename: activityReportFilename(activity.name), buffer: Buffer.from(await workbook.xlsx.writeBuffer()), rowCount: students.length }
 }
 
-// Keep the old endpoint safe for existing bookmarks: it now produces the same Final-only workbook.
+// Keep the old endpoint safe for existing bookmarks: it now produces the same five-sheet activity report.
 export async function createSummaryExport(filters: ReportFilters) {
   return createFinalExport(filters)
 }

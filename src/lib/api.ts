@@ -459,10 +459,9 @@ export async function getAnalyticsStudents(filters: AnalyticsFilters, page: numb
 }
 
 export type FinalAnalysisPhase = 'pre' | 'post'
-export type FinalAnalysisFilters = { activityId: number; majors: string[]; educationLevels: string[]; studyYears: string[]; phases: FinalAnalysisPhase[] }
+export type FinalAnalysisFilters = { activityId: number; faculties: string[]; majors: string[]; educationLevels: string[]; studyYears: string[]; phases: FinalAnalysisPhase[] }
 export type DescriptiveStatistics = { n: number; mean: number | null; sd: number | null; minimum: number | null; maximum: number | null }
-export type FinalAnalysisMajor = {
-  major: string
+export type FinalAnalysisGroup = {
   studentCount: number
   pairedCount: number
   pre: DescriptiveStatistics
@@ -476,10 +475,12 @@ export type FinalAnalysisMajor = {
   decreased: { count: number; percentage: number | null }
   rankingScore: number | null
 }
+export type FinalAnalysisFaculty = FinalAnalysisGroup & { faculty: string }
+export type FinalAnalysisMajor = FinalAnalysisGroup & { major: string }
 export type FinalAnalysisResult = {
   filters: {
-    selected: { majors: string[]; educationLevels: string[]; studyYears: number[]; phases: FinalAnalysisPhase[] }
-    options: { majors: string[]; educationLevels: string[]; studyYears: number[] }
+    selected: { faculties: string[]; majors: string[]; educationLevels: string[]; studyYears: number[]; phases: FinalAnalysisPhase[] }
+    options: { faculties: string[]; majors: string[]; educationLevels: string[]; studyYears: number[] }
   }
   scale: { minimum: number; maximum: number }
   summary: {
@@ -508,6 +509,7 @@ export type FinalAnalysisResult = {
     unpairedPreCount: number
     unpairedPostCount: number
   }
+  faculties: FinalAnalysisFaculty[]
   majors: FinalAnalysisMajor[]
   distribution: Array<{ from: number; to: number; label: string; preCount: number; postCount: number }>
   boxPlot: {
@@ -519,6 +521,7 @@ export type FinalAnalysisResult = {
 
 export async function getFinalAnalysis(filters: FinalAnalysisFilters) {
   const params = new URLSearchParams({ activityId: String(filters.activityId) })
+  filters.faculties.forEach((faculty) => params.append('faculty', faculty))
   filters.majors.forEach((major) => params.append('major', major))
   filters.educationLevels.forEach((level) => params.append('educationLevel', level))
   filters.studyYears.forEach((year) => params.append('studyYear', year))

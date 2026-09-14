@@ -5,7 +5,7 @@ import { pool } from '../db/pool.js'
 import { ApiError } from '../lib/http.js'
 import { requireAdmin } from '../middleware/auth.js'
 import { requireReportExportPermission } from '../middleware/reportAuthorization.js'
-import { createFinalExport, createRawExport, createSummaryExport, type ReportFilters } from '../services/exportService.js'
+import type { ReportFilters } from '../services/exportService.js'
 
 const exportSchema = z.object({
   activityId: z.coerce.number().int().positive(),
@@ -31,6 +31,7 @@ function encodeDownloadFilename(filename: string) {
 async function download(request: Request, response: Response, exportType: ExportType) {
   if (!isDatabaseAvailable()) throw new ApiError(503, 'ระบบฐานข้อมูลยังไม่พร้อมสำหรับการส่งออกรายงาน')
   const filters = exportSchema.parse(request.body)
+  const { createFinalExport, createRawExport, createSummaryExport } = await import('../services/exportService.js')
   const exportFile = exportType === 'raw'
     ? await createRawExport(filters)
     : exportType === 'final'

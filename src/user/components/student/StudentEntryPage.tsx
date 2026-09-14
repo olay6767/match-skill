@@ -50,9 +50,9 @@ function StudentEntryPage({ token, onNavigate }: StudentEntryPageProps) {
     onNavigate(`/s/${token}/${result.next}`, true)
   }
 
-  if (state) return <main className="student-page"><SurveyWindowState kind={state} onRetry={state === 'network-error' ? retry : undefined} /></main>
+  if (state) return <main className={`student-page student-page--status student-page--status-${state}`}><SurveyWindowState kind={state} onRetry={state === 'network-error' ? retry : undefined} /></main>
   if (!survey) return null
-  if (survey.status !== 'open') return <main className={studentThemePageClass(survey.activity.formTheme)} style={formThemeStyle(survey.activity.formTheme)}><SurveyWindowState kind={survey.status} /></main>
+  if (survey.status !== 'open') return <main className={`${studentThemePageClass(survey.activity.formTheme)} student-page--status student-page--status-${survey.status}`} style={formThemeStyle(survey.activity.formTheme)}><SurveyWindowState kind={survey.status} /></main>
 
   return (
     <main className={studentThemePageClass(survey.activity.formTheme)} style={formThemeStyle(survey.activity.formTheme)}>

@@ -4,6 +4,7 @@ import ProgressBar from '../../../shared/components/ui/ProgressBar'
 import StatusBadge from '../../../shared/components/ui/StatusBadge'
 import { statusLabels } from './dashboardData'
 import type { Activity, DemoAction } from './types'
+import { richTextToPlainText } from '../../../shared/richText'
 
 type ActivityRowProps = {
   activity: Activity
@@ -31,7 +32,7 @@ function ActivityRow({ activity, onDemoAction, onEdit, onDelete, onToggle }: Act
           </span>
           <span>
             <strong>{activity.name}</strong>
-            <small>{activity.detail}</small>
+            <small>{richTextToPlainText(activity.detail)}</small>
           </span>
         </div>
       </td>

@@ -1,11 +1,12 @@
 import type { Activity, ActivityQrData } from '../dashboard/types'
 import StatusBadge from '../../../shared/components/ui/StatusBadge'
 import { statusLabels } from '../dashboard/dashboardData'
+import RichTextContent from '../../../shared/components/ui/RichTextContent'
 
 function ActivityOverview({ activity, stats }: { activity: Activity; stats: ActivityQrData['stats'] }) {
   return <>
     <section className="activity-detail-overview panel">
-      <div><small>{activity.code || 'ยังไม่มีรหัส'}</small><h1>{activity.name}</h1><p>{activity.detail || 'ไม่มีรายละเอียด'}</p></div>
+      <div><small>{activity.code || 'ยังไม่มีรหัส'}</small><h1>{activity.name}</h1>{activity.detail ? <RichTextContent value={activity.detail} /> : <p>ไม่มีรายละเอียด</p>}</div>
       <StatusBadge status={activity.status}>{statusLabels[activity.status]}</StatusBadge>
       <dl><div><dt>วันที่สร้างกิจกรรม</dt><dd>{new Date(activity.createdAt).toLocaleDateString('th-TH')}</dd></div><div><dt>วันที่เริ่มกิจกรรม</dt><dd>{activity.startDate || '—'}</dd></div><div><dt>กลุ่มเป้าหมาย</dt><dd>{activity.targetGroup || '—'}</dd></div><div><dt>จำนวนรองรับ</dt><dd>{activity.participantLimit}</dd></div></dl>
     </section>

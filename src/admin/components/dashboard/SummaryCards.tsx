@@ -1,6 +1,9 @@
 import MetricCard from './MetricCard'
 import type { IconName } from '../../../shared/components/ui/Icon'
 import type { DashboardSummary } from './types'
+import activitiesIcon from '../../../assets/กิจกรรม.png'
+import postTestIcon from '../../../assets/99.png'
+import completionIcon from '../../../assets/79.png'
 
 type SummaryCardsProps = {
   summary: DashboardSummary
@@ -9,6 +12,7 @@ type SummaryCardsProps = {
 function SummaryCards({ summary }: SummaryCardsProps) {
   const metrics: Array<{
     icon: IconName
+    imageSrc?: string
     tone: string
     meta: string
     metaClass: string
@@ -17,6 +21,7 @@ function SummaryCards({ summary }: SummaryCardsProps) {
   }> = [
     {
       icon: 'activities',
+      imageSrc: activitiesIcon,
       tone: 'blue',
       meta: 'คำตอบ',
       metaClass: 'metric-label',
@@ -25,6 +30,7 @@ function SummaryCards({ summary }: SummaryCardsProps) {
     },
     {
       icon: 'rocket',
+      imageSrc: postTestIcon,
       tone: 'orange',
       meta: 'คำตอบ',
       metaClass: 'metric-label',
@@ -41,6 +47,7 @@ function SummaryCards({ summary }: SummaryCardsProps) {
     },
     {
       icon: 'check',
+      imageSrc: completionIcon,
       tone: 'green',
       meta: summary.preCount > 0 ? 'ทำครบ ÷ Pre-test' : 'ยังไม่มี Pre-test',
       metaClass: 'metric-label',

@@ -4,6 +4,7 @@ export type FinalAnalysisPhase = 'pre' | 'post'
 
 export type FinalAnalysisFilters = {
   activityId: number
+  faculties: string[]
   majors: string[]
   educationLevels: string[]
   studyYears: number[]
@@ -14,6 +15,7 @@ type ResponseScoreRow = {
   response_id: number | string
   student_id: number | string
   student_code: string
+  faculty: string | null
   major: string | null
   education_level: string | null
   study_year: number | string | null
@@ -28,6 +30,7 @@ type ScoreEntry = {
   responseId: number
   studentId: number
   studentCode: string
+  faculty: string
   major: string
   educationLevel: string | null
   studyYear: number | null
@@ -54,6 +57,7 @@ type BoxPlotStatistics = {
   outliers: number[]
 }
 
+const missingFacultyLabel = 'ไม่ระบุคณะ'
 const missingMajorLabel = 'ไม่ระบุสาขา'
 
 function finiteNumber(value: number | string | null | undefined) {
@@ -199,13 +203,52 @@ function majorStatistics(entries: ScoreEntry[], phases: FinalAnalysisPhase[]) {
   })
 }
 
+
+function facultyStatistics(entries: ScoreEntry[], phases: FinalAnalysisPhase[]) {
+  const showPre = phases.includes('pre')
+  const showPost = phases.includes('post')
+  const visibleEntries = entries.filter((entry) => (showPre && entry.phase === 'pre') || (showPost && entry.phase === 'post'))
+  const faculties = Array.from(new Set(visibleEntries.map((entry) => entry.faculty)))
+  return faculties.map((faculty) => {
+    const group = entries.filter((entry) => entry.faculty === faculty)
+    const pre = phaseEntries(group, 'pre')
+    const post = phaseEntries(group, 'post')
+    const pairs = pairEntries(group)
+    const preStats = calculateDescriptiveStatistics(pre.map((entry) => entry.score))
+    const postStats = calculateDescriptiveStatistics(post.map((entry) => entry.score))
+    const pairedPreStats = calculateDescriptiveStatistics(pairs.map((pair) => pair.pre.score))
+    const pairedPostStats = calculateDescriptiveStatistics(pairs.map((pair) => pair.post.score))
+    const pairedDifference = calculateDescriptiveStatistics(pairs.map((pair) => pair.post.score - pair.pre.score))
+    const differences = pairs.map((pair) => pair.post.score - pair.pre.score)
+    const improvedCount = differences.filter((value) => value > 0.0005).length
+    const decreasedCount = differences.filter((value) => value < -0.0005).length
+    const unchangedCount = pairs.length - improvedCount - decreasedCount
+    const comparisonEnabled = showPre && showPost
+    const changePercentage = comparisonEnabled ? improvementPercentage(pairedPreStats.mean, pairedPostStats.mean) : null
+    const rankingScore = comparisonEnabled ? changePercentage : showPost && postStats.mean !== null ? postStats.mean : showPre ? preStats.mean : null
+    return {
+      faculty,
+      studentCount: uniqueStudentCount(group.filter((entry) => (showPre && entry.phase === 'pre') || (showPost && entry.phase === 'post'))),
+      pairedCount: pairs.length,
+      pre: showPre ? preStats : calculateDescriptiveStatistics([]),
+      post: showPost ? postStats : calculateDescriptiveStatistics([]),
+      pairedPreMean: comparisonEnabled ? pairedPreStats.mean : null,
+      pairedPostMean: comparisonEnabled ? pairedPostStats.mean : null,
+      meanDifference: comparisonEnabled ? pairedDifference.mean : null,
+      improvementPercentage: changePercentage,
+      improved: { count: comparisonEnabled ? improvedCount : 0, percentage: pairs.length && comparisonEnabled ? rounded((improvedCount / pairs.length) * 100, 2) : null },
+      unchanged: { count: comparisonEnabled ? unchangedCount : 0, percentage: pairs.length && comparisonEnabled ? rounded((unchangedCount / pairs.length) * 100, 2) : null },
+      decreased: { count: comparisonEnabled ? decreasedCount : 0, percentage: pairs.length && comparisonEnabled ? rounded((decreasedCount / pairs.length) * 100, 2) : null },
+      rankingScore,
+    }
+  })
+}
+
 function buildInsights(input: {
   phases: FinalAnalysisPhase[]
   pairedCount: number
   pairedPreMean: number | null
-  pairedPreSd: number | null
   pairedPostMean: number | null
-  pairedPostSd: number | null
   improvementPercentage: number | null
   improvedCount: number
   improvedPercentage: number | null
@@ -213,34 +256,51 @@ function buildInsights(input: {
   decreasedCount: number
   unpairedPreCount: number
   unpairedPostCount: number
-  majors: ReturnType<typeof majorStatistics>
+  faculties: ReturnType<typeof facultyStatistics>
 }) {
   const insights: string[] = []
   const showPre = input.phases.includes('pre')
   const showPost = input.phases.includes('post')
+  const unpairedCount = input.unpairedPreCount + input.unpairedPostCount
+
   if (showPre && showPost) {
-    if (input.pairedCount === 0) insights.push('ยังไม่มีนักศึกษาที่ทำครบทั้ง Pre-test และ Post-test จึงยังคำนวณผลต่างแบบจับคู่ไม่ได้')
-    else {
+    if (input.pairedCount === 0) {
+      insights.push('ยังไม่มีผู้ตอบที่ทำครบทั้ง Pre-test และ Post-test จึงยังเปรียบเทียบผลไม่ได้')
+    } else {
       const difference = rounded((input.pairedPostMean ?? 0) - (input.pairedPreMean ?? 0)) ?? 0
-      const direction = difference > 0 ? 'เพิ่มขึ้น' : difference < 0 ? 'ลดลง' : 'ไม่เปลี่ยนแปลง'
-      insights.push(`จากผู้ตอบที่จับคู่ได้ ${input.pairedCount} คน คะแนน Pre-test เฉลี่ย ${input.pairedPreMean?.toFixed(2) ?? '—'} ± ${input.pairedPreSd?.toFixed(2) ?? '—'} และ Post-test เฉลี่ย ${input.pairedPostMean?.toFixed(2) ?? '—'} ± ${input.pairedPostSd?.toFixed(2) ?? '—'} โดยคะแนน${direction} ${Math.abs(difference).toFixed(2)} คะแนน (${input.improvementPercentage === null ? '—' : `${input.improvementPercentage > 0 ? '+' : ''}${input.improvementPercentage.toFixed(2)}%`})`)
-      insights.push(`ผู้ตอบที่คะแนนดีขึ้น ${input.improvedCount} คน เท่าเดิม ${input.unchangedCount} คน และลดลง ${input.decreasedCount} คน`)
-      if (input.improvedPercentage !== null) insights.push(`คิดเป็นผู้ตอบที่คะแนนดีขึ้น ${input.improvedPercentage.toFixed(2)}% ของผู้ที่มีข้อมูลครบคู่`)
+      const direction = difference > 0 ? 'เพิ่ม' : difference < 0 ? 'ลด' : 'คงที่'
+      const percent = input.improvementPercentage === null ? '—' : `${input.improvementPercentage > 0 ? '+' : ''}${input.improvementPercentage.toFixed(2)}%`
+      insights.push(`ผู้ตอบครบคู่ ${input.pairedCount} คน: Pre ${input.pairedPreMean?.toFixed(2) ?? '—'} → Post ${input.pairedPostMean?.toFixed(2) ?? '—'} (${direction} ${Math.abs(difference).toFixed(2)} คะแนน, ${percent})`)
+      insights.push(`ดีขึ้น ${input.improvedCount} คน (${input.improvedPercentage?.toFixed(0) ?? '0'}%) · เท่าเดิม ${input.unchangedCount} · ลดลง ${input.decreasedCount}${unpairedCount ? ` · ยังไม่ครบคู่ ${unpairedCount}` : ''}`)
     }
   } else {
-    insights.push(`กำลังแสดงข้อมูล ${showPre ? 'Pre-test' : 'Post-test'} เพียงช่วงเดียว การเปรียบเทียบแบบจับคู่จึงถูกพักไว้ชั่วคราว`)
+    insights.push(`กำลังแสดงเฉพาะ ${showPre ? 'Pre-test' : 'Post-test'} ตามตัวกรองที่เลือก`)
   }
-  if (input.unpairedPreCount || input.unpairedPostCount) insights.push(`มีข้อมูลที่ยังจับคู่ไม่ได้: Pre-test ${input.unpairedPreCount} คน และ Post-test ${input.unpairedPostCount} คน ข้อมูลยังคงอยู่ในระบบแต่ไม่ถูกนำไปคำนวณผลต่าง`)
-  const ranked = input.majors.filter((item) => item.rankingScore !== null).sort((left, right) => right.rankingScore! - left.rankingScore!)
-  const highestPost = [...input.majors].filter((item) => item.post.mean !== null).sort((left, right) => right.post.mean! - left.post.mean!)[0]
-  if (highestPost) insights.push(`สาขาที่มีคะแนนเฉลี่ย Post-test สูงสุดคือ ${highestPost.major} (${highestPost.post.mean!.toFixed(2)} คะแนน)`)
-  if (showPre && showPost && ranked[0]) insights.push(`สาขาที่มีร้อยละการพัฒนาสูงสุดคือ ${ranked[0].major} (${ranked[0].rankingScore! > 0 ? '+' : ''}${ranked[0].rankingScore!.toFixed(2)}%)`)
-  return insights
+
+  const selectedPhase = showPost ? 'post' : 'pre'
+  const highestFaculty = [...input.faculties]
+    .filter((item) => item[selectedPhase].mean !== null)
+    .sort((left, right) => right[selectedPhase].mean! - left[selectedPhase].mean!)[0]
+  if (highestFaculty) {
+    insights.push(`คณะที่มีคะแนนเฉลี่ย ${selectedPhase === 'post' ? 'Post-test' : 'Pre-test'} สูงสุด: ${highestFaculty.faculty} (${highestFaculty[selectedPhase].mean!.toFixed(2)})`)
+  }
+
+  return insights.slice(0, 3)
 }
 
 export async function getFinalAnalysis(filters: FinalAnalysisFilters) {
   const clauses = ['sr.activity_id = ?']
   const values: Array<string | number> = [filters.activityId]
+  if (filters.faculties.length) {
+    const namedFaculties = filters.faculties.filter((faculty) => faculty !== missingFacultyLabel)
+    const facultyConditions: string[] = []
+    if (filters.faculties.includes(missingFacultyLabel)) facultyConditions.push("(s.faculty IS NULL OR s.faculty = '')")
+    if (namedFaculties.length) {
+      facultyConditions.push(`s.faculty IN (${namedFaculties.map(() => '?').join(', ')})`)
+      values.push(...namedFaculties)
+    }
+    clauses.push(`(${facultyConditions.join(' OR ')})`)
+  }
   if (filters.majors.length) {
     const namedMajors = filters.majors.filter((major) => major !== missingMajorLabel)
     const majorConditions: string[] = []
@@ -260,15 +320,15 @@ export async function getFinalAnalysis(filters: FinalAnalysisFilters) {
     values.push(...filters.studyYears)
   }
 
-  const [rows, scaleRows, majorRows, educationRows, studyYearRows] = await Promise.all([
+  const [rows, scaleRows, facultyRows, majorRows, educationRows, studyYearRows] = await Promise.all([
     pool.query<ResponseScoreRow[]>(`
-      SELECT sr.id AS response_id, sr.student_id, s.student_code, s.major, s.education_level, s.study_year,
+      SELECT sr.id AS response_id, sr.student_id, s.student_code, s.faculty, s.major, s.education_level, s.study_year,
         sr.phase, AVG(ra.score) AS score, COUNT(ra.id) AS answer_count
       FROM survey_responses sr
       JOIN students s ON s.id = sr.student_id
       JOIN response_answers ra ON ra.response_id = sr.id
       WHERE ${clauses.join(' AND ')}
-      GROUP BY sr.id, sr.student_id, s.student_code, s.major, s.education_level, s.study_year, sr.phase
+      GROUP BY sr.id, sr.student_id, s.student_code, s.faculty, s.major, s.education_level, s.study_year, sr.phase
       ORDER BY s.student_code ASC, sr.phase ASC`, values),
     pool.query<ScaleRow[]>(`
       SELECT MIN(cl.level) AS minimum_score, MAX(cl.level) AS maximum_score
@@ -276,6 +336,7 @@ export async function getFinalAnalysis(filters: FinalAnalysisFilters) {
       JOIN questions q ON q.template_id = a.survey_template_id
       JOIN competency_levels cl ON cl.competency_id = q.competency_id
       WHERE a.id = ?`, [filters.activityId]),
+    pool.query<Array<{ value: string | null }>>(`SELECT DISTINCT NULLIF(TRIM(s.faculty), '') AS value FROM survey_responses sr JOIN students s ON s.id = sr.student_id WHERE sr.activity_id = ? ORDER BY value`, [filters.activityId]),
     pool.query<Array<{ value: string | null }>>(`SELECT DISTINCT NULLIF(TRIM(s.major), '') AS value FROM survey_responses sr JOIN students s ON s.id = sr.student_id WHERE sr.activity_id = ? ORDER BY value`, [filters.activityId]),
     pool.query<Array<{ value: string | null }>>(`SELECT DISTINCT NULLIF(TRIM(s.education_level), '') AS value FROM survey_responses sr JOIN students s ON s.id = sr.student_id WHERE sr.activity_id = ? ORDER BY value`, [filters.activityId]),
     pool.query<Array<{ value: number | string | null }>>(`SELECT DISTINCT s.study_year AS value FROM survey_responses sr JOIN students s ON s.id = sr.student_id WHERE sr.activity_id = ? AND s.study_year IS NOT NULL ORDER BY s.study_year`, [filters.activityId]),
@@ -285,6 +346,7 @@ export async function getFinalAnalysis(filters: FinalAnalysisFilters) {
     responseId: finiteNumber(row.response_id),
     studentId: finiteNumber(row.student_id),
     studentCode: row.student_code,
+    faculty: row.faculty?.trim() || missingFacultyLabel,
     major: row.major?.trim() || missingMajorLabel,
     educationLevel: row.education_level?.trim() || null,
     studyYear: row.study_year === null ? null : finiteNumber(row.study_year),
@@ -316,6 +378,7 @@ export async function getFinalAnalysis(filters: FinalAnalysisFilters) {
   const maximumScore = scale?.maximum_score === null || scale?.maximum_score === undefined
     ? (observedScores.length ? Math.max(...observedScores) : 0)
     : finiteNumber(scale.maximum_score)
+  const faculties = facultyStatistics(entries, filters.phases)
   const majors = majorStatistics(entries, filters.phases)
   const pairedStudentIds = new Set(pairs.map((pair) => pair.pre.studentId))
   const unpairedPreCount = showPre ? pre.filter((entry) => !pairedStudentIds.has(entry.studentId)).length : 0
@@ -324,9 +387,7 @@ export async function getFinalAnalysis(filters: FinalAnalysisFilters) {
     phases: filters.phases,
     pairedCount: comparisonEnabled ? pairs.length : 0,
     pairedPreMean: comparisonEnabled ? pairedPre.mean : null,
-    pairedPreSd: comparisonEnabled ? pairedPre.sd : null,
     pairedPostMean: comparisonEnabled ? pairedPost.mean : null,
-    pairedPostSd: comparisonEnabled ? pairedPost.sd : null,
     improvementPercentage: comparisonEnabled ? improvementPercentage(pairedPre.mean, pairedPost.mean) : null,
     improvedCount,
     improvedPercentage: pairs.length && comparisonEnabled ? rounded((improvedCount / pairs.length) * 100, 2) : null,
@@ -334,13 +395,14 @@ export async function getFinalAnalysis(filters: FinalAnalysisFilters) {
     decreasedCount,
     unpairedPreCount,
     unpairedPostCount,
-    majors,
+    faculties,
   })
 
   return {
     filters: {
-      selected: { majors: filters.majors, educationLevels: filters.educationLevels, studyYears: filters.studyYears, phases: filters.phases },
+      selected: { faculties: filters.faculties, majors: filters.majors, educationLevels: filters.educationLevels, studyYears: filters.studyYears, phases: filters.phases },
       options: {
+        faculties: facultyRows.map((row) => row.value?.trim() || missingFacultyLabel).filter((value, index, list) => list.indexOf(value) === index),
         majors: majorRows.map((row) => row.value?.trim() || missingMajorLabel).filter((value, index, list) => list.indexOf(value) === index),
         educationLevels: educationRows.flatMap((row) => row.value ? [row.value] : []),
         studyYears: studyYearRows.flatMap((row) => row.value === null ? [] : [finiteNumber(row.value)]),
@@ -373,6 +435,7 @@ export async function getFinalAnalysis(filters: FinalAnalysisFilters) {
       unpairedPreCount,
       unpairedPostCount,
     },
+    faculties,
     majors,
     distribution: createDistribution(showPre ? pre.map((entry) => entry.score) : [], showPost ? post.map((entry) => entry.score) : [], minimumScore, maximumScore),
     boxPlot: {

@@ -37,7 +37,7 @@ function ActivityCheckboxFilter({ values, activities, onChange }: { values: stri
   }
 
   return <div className="dashboard-activity-multiselect">
-    <span>กิจกรรม</span>
+    <span>ชื่อกิจกรรม</span>
     <details ref={detailsRef}>
       <summary><strong title={selectedLabel}>{selectedLabel}</strong><i aria-hidden="true" /></summary>
       <div className="dashboard-activity-multiselect__menu" role="group" aria-label="เลือกกิจกรรมที่ใช้คำนวณ Dashboard">
@@ -66,8 +66,8 @@ function ActivityCheckboxFilter({ values, activities, onChange }: { values: stri
 function DashboardFilters({ value, activities, onChange }: Props) {
   return (
     <section className="dashboard-data-filters" aria-label="ตัวกรองข้อมูล Dashboard">
-      <label>ตั้งแต่<DatePickerField key={value.from} value={value.from || null} max={value.to || undefined} ariaLabel="ตั้งแต่" onChange={(from) => onChange({ ...value, from: from ?? '' })} /></label>
-      <label>ถึง<DatePickerField key={value.to} value={value.to || null} min={value.from || undefined} ariaLabel="ถึง" onChange={(to) => onChange({ ...value, to: to ?? '' })} /></label>
+      <label>วันที่เริ่มต้น<DatePickerField key={value.from} value={value.from || null} max={value.to || undefined} ariaLabel="วันที่เริ่มต้น" onChange={(from) => onChange({ ...value, from: from ?? '' })} /></label>
+      <label>วันที่สิ้นสุด<DatePickerField key={value.to} value={value.to || null} min={value.from || undefined} ariaLabel="วันที่สิ้นสุด" onChange={(to) => onChange({ ...value, to: to ?? '' })} /></label>
       <ActivityCheckboxFilter values={value.activityIds} activities={activities} onChange={(activityIds) => onChange({ ...value, activityIds })} />
       <button type="button" onClick={() => onChange({ from: '', to: '', activityIds: [] })}>ล้างตัวกรอง</button>
     </section>

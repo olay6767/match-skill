@@ -13,6 +13,7 @@ import DashboardFilters from './DashboardFilters'
 import RecentActivities from './RecentActivities'
 import SummaryCards from './SummaryCards'
 import type { ActivityOption, CompetencyGrowth, DashboardFilters as FilterValues, DashboardSummary, RecentActivity } from './types'
+import { richTextToPlainText } from '../../../shared/richText'
 
 type DashboardProps = {
   adminEmail: string
@@ -87,7 +88,7 @@ function Dashboard({ adminEmail, onLogout, onOpenCreateActivity, onNavigate, onS
 
   const visibleActivities = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return query ? activities.filter((activity) => `${activity.name} ${activity.detail}`.toLowerCase().includes(query)) : activities
+    return query ? activities.filter((activity) => `${activity.name} ${richTextToPlainText(activity.detail)}`.toLowerCase().includes(query)) : activities
   }, [activities, search])
 
   const showDemoMessage = (label: string) => setMessage(`${label} จะพร้อมใช้งานในขั้นถัดไป`)

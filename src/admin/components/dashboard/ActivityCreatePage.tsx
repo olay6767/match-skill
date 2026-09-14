@@ -4,6 +4,7 @@ import DashboardLayout from '../layout/DashboardLayout'
 import type { DashboardNav } from '../layout/DashboardSidebar'
 import ActivityForm from './ActivityForm'
 import { emptyActivityForm, type ActivityFormValues } from './activityFormModel'
+import './activityFormEnhancements.css'
 
 type Props = {
   activityId?: number
@@ -48,7 +49,7 @@ function ActivityCreatePage({ activityId, adminEmail, onLogout, onNavigate, onRo
     onSettings={() => { if (confirmLeave()) onSettings() }} search="" onSearchChange={() => undefined} notice={notice}
     onCloseNotice={() => setNotice('')} onDemoAction={() => undefined}>
     <div className="activity-form-page">
-      <div className="activities-page-heading activity-form-page-heading"><div><span className="activity-form-eyebrow">Activity form</span><h1>{activityId ? 'แก้ไขกิจกรรม' : 'สร้างกิจกรรมใหม่'}</h1><p>กรอกข้อมูลตามต้องการ แล้วแอดมินสามารถเปิดหรือปิดกิจกรรมได้ด้วยตนเองทุกเมื่อ</p></div></div>
+      <div className="activities-page-heading activity-form-page-heading"><div><span className="activity-form-eyebrow">Activity form</span><h1>{activityId ? 'แก้ไขกิจกรรม' : 'สร้างกิจกรรมใหม่'}</h1></div></div>
       {!initialValues ? <div className="dashboard-loading" role="status">กำลังโหลดข้อมูลกิจกรรม...</div> : <ActivityForm key={`${activityId ?? 'new'}-${JSON.stringify(initialValues)}`} createdAt={createdAt} initialValues={initialValues} templates={templates} submitLabel={activityId ? 'บันทึกการแก้ไข' : 'Save Draft'} onDirtyChange={setIsDirty} onCancel={() => route('/admin/activities')} onSubmit={handleSubmit} />}
     </div>
   </DashboardLayout>

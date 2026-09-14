@@ -5,6 +5,7 @@ import DashboardFooter from './DashboardFooter'
 import DashboardSidebar, { type DashboardNav } from './DashboardSidebar'
 import DashboardTopbar from './DashboardTopbar'
 import '../../styles/Dashboard.css'
+import './dashboardChromeEnhancements.css'
 
 type DashboardLayoutProps = {
   adminEmail: string
@@ -48,7 +49,7 @@ function DashboardLayout({
   }
 
   return (
-    <div className="dashboard-page">
+    <div className={`dashboard-page${activeNav === 'Dashboard' ? ' dashboard-page--overview' : ''}`}>
       <DashboardSidebar
         adminEmail={adminEmail}
         onLogout={onLogout}
@@ -65,6 +66,7 @@ function DashboardLayout({
           onSearchChange={onSearchChange}
           onOpenMenu={() => setMobileNavOpen(true)}
           menuOpen={mobileNavOpen}
+          activeNav={activeNav}
         />
 
         <main className="dashboard-content">

@@ -5,15 +5,15 @@ import type { CompetencyGrowth } from './types'
 type ScoreMode = 'average' | 'maximum' | 'minimum'
 type ChartMode = 'combined' | 'comparison'
 
-const chartModes: Array<{ value: ChartMode; label: string }> = [
-  { value: 'combined', label: 'PRE-test + POST-test' },
-  { value: 'comparison', label: 'เปรียบเทียบ PRE / POST' },
+const chartModes: Array<{ value: ChartMode; label: string; ariaLabel: string }> = [
+  { value: 'combined', label: 'คะแนนรวม', ariaLabel: 'ดูคะแนนรวม Pre-test และ Post-test' },
+  { value: 'comparison', label: 'ก่อน / หลัง', ariaLabel: 'เปรียบเทียบคะแนน Pre-test และ Post-test' },
 ]
 
-const scoreModes: Array<{ value: ScoreMode; label: string }> = [
-  { value: 'average', label: 'คะแนนเฉลี่ย' },
-  { value: 'maximum', label: 'คะแนนสูงสุด' },
-  { value: 'minimum', label: 'คะแนนต่ำสุด' },
+const scoreModes: Array<{ value: ScoreMode; label: string; ariaLabel: string }> = [
+  { value: 'average', label: 'เฉลี่ย', ariaLabel: 'คะแนนเฉลี่ย' },
+  { value: 'maximum', label: 'สูงสุด', ariaLabel: 'คะแนนสูงสุด' },
+  { value: 'minimum', label: 'ต่ำสุด', ariaLabel: 'คะแนนต่ำสุด' },
 ]
 
 function scoreFor(item: CompetencyGrowth, phase: 'pre' | 'post', mode: ScoreMode) {
@@ -51,7 +51,7 @@ function combinedScoreFor(item: CompetencyGrowth, mode: ScoreMode) {
 function SkillGrowthChart({ data }: { data: CompetencyGrowth[] }) {
   const [chartMode, setChartMode] = useState<ChartMode>('comparison')
   const [scoreMode, setScoreMode] = useState<ScoreMode>('average')
-  const modeLabel = scoreModes.find((mode) => mode.value === scoreMode)?.label ?? 'คะแนนเฉลี่ย'
+  const modeLabel = scoreModes.find((mode) => mode.value === scoreMode)?.ariaLabel ?? 'คะแนนเฉลี่ย'
   const isCombined = chartMode === 'combined'
   const hasScores = data.some((item) => isCombined
     ? combinedScoreFor(item, scoreMode) !== null
@@ -59,10 +59,10 @@ function SkillGrowthChart({ data }: { data: CompetencyGrowth[] }) {
   const levels = [7, 6, 5, 4, 3, 2, 1]
   return (
     <Card as="article" className="panel chart-panel">
-      <div className="panel-heading">
+      <div className="panel-heading chart-panel-heading">
         <div>
-          <h2>แนวโน้มการเปลี่ยนแปลงสมรรถนะ</h2>
-          <p>{isCombined ? `แสดง${modeLabel}รวม Pre-test + Post-test` : `เปรียบเทียบ${modeLabel}ก่อนและหลังเข้าร่วมกิจกรรม`}</p>
+          <h2>ภาพรวมคะแนนสมรรถนะ</h2>
+          <p>คะแนนเต็ม 7 แยกตามสมรรถนะ</p>
         </div>
         <div className="chart-heading-actions">
           <div className="chart-control-row">
@@ -73,6 +73,7 @@ function SkillGrowthChart({ data }: { data: CompetencyGrowth[] }) {
                   key={mode.value}
                   className={chartMode === mode.value ? 'is-active' : ''}
                   aria-pressed={chartMode === mode.value}
+                  aria-label={mode.ariaLabel}
                   onClick={() => setChartMode(mode.value)}
                 >
                   {mode.label}
@@ -86,6 +87,7 @@ function SkillGrowthChart({ data }: { data: CompetencyGrowth[] }) {
                   key={mode.value}
                   className={scoreMode === mode.value ? 'is-active' : ''}
                   aria-pressed={scoreMode === mode.value}
+                  aria-label={mode.ariaLabel}
                   onClick={() => setScoreMode(mode.value)}
                 >
                   {mode.label}
@@ -95,7 +97,7 @@ function SkillGrowthChart({ data }: { data: CompetencyGrowth[] }) {
           </div>
           <div className="chart-legend">
             {isCombined
-              ? <span><i className="legend-dot legend-dot--combined" /> Pre-test + Post-test {modeLabel}</span>
+              ? <span><i className="legend-dot legend-dot--combined" /> รวม PRE + POST</span>
               : <><span><i className="legend-dot legend-dot--pre" /> Pre-test</span><span><i className="legend-dot legend-dot--post" /> Post-test</span></>}
           </div>
         </div>
@@ -115,7 +117,7 @@ function SkillGrowthChart({ data }: { data: CompetencyGrowth[] }) {
               const postScore = scoreFor(item, 'post', scoreMode)
               return (
                 <div className="bar-group" key={item.id} title={isCombined ? `${item.name}: PRE + POST ${modeLabel} ${combinedScore?.toFixed(2) ?? 'ไม่มีข้อมูล'}` : `${item.name}: Pre ${preScore ?? 'ไม่มีข้อมูล'}, Post ${postScore ?? 'ไม่มีข้อมูล'}`}>
-                  <div className={`bar-pair${isCombined ? ' bar-pair--single' : ''}`}>
+                  <div key={`${chartMode}-${scoreMode}-${item.id}`} className={`bar-pair${isCombined ? ' bar-pair--single' : ''}`}>
                     {isCombined
                       ? <span className="bar bar--combined" style={{ height: `${((combinedScore ?? 0) / 7) * 100}%` }} />
                       : <><span className="bar bar--pre" style={{ height: `${((preScore ?? 0) / 7) * 100}%` }} /><span className="bar bar--post" style={{ height: `${((postScore ?? 0) / 7) * 100}%` }} /></>}
@@ -130,7 +132,6 @@ function SkillGrowthChart({ data }: { data: CompetencyGrowth[] }) {
           </div>
         </div>
       )}
-      {hasScores && <p className="chart-caption">{isCombined ? `${modeLabel}รวม PRE + POST` : modeLabel} · ระดับคะแนน 1–7 · จำนวนตัวอย่างแสดงในข้อความกำกับแต่ละแท่ง</p>}
     </Card>
   )
 }
