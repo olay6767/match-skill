@@ -27,9 +27,8 @@ import facultyProfileIcon from '../../../assets/สำนักวิชา.png'
 import englishFlag from '../../../assets/6666.jpg'
 import thaiFlag from '../../../assets/888.jpg'
 import studentPortalLogo from '../../../assets/93.png'
-import sutPartnerLogo from '../../../assets/24.png'
-import studentLoginCover from '../../../assets/31.png'
-import studentAnniversaryLogo from '../../../assets/35.png'
+import sutBrandMark from '../../../assets/11.png'
+import studentLoginCover from '../../../assets/8.png'
 import { trackUserEvent } from '../../usage/tracker'
 import './userPortal.css'
 import "./userPortalLoginRefresh.css"
@@ -464,7 +463,7 @@ export function UserPortalLogin({ onNavigate, returnTo }: PortalPageProps & { re
           <div className="user-portal-login__top-logos" aria-label="SEDA Student Portal and SUT anniversary">
             <img className="user-portal-login__seda-logo" src={studentPortalLogo} alt="SEDA Student Portal" />
             <span aria-hidden="true" />
-            <img className="user-portal-login__anniversary-logo" src={studentAnniversaryLogo} alt="SUT 36th Anniversary" />
+            <img className="user-portal-login__anniversary-logo" src={sutBrandMark} alt="SUT" />
           </div>
           <div className="user-portal-login__brand" aria-hidden="true">
             <img src={studentPortalLogo} alt="SEDA" />
@@ -494,7 +493,7 @@ export function UserPortalLogin({ onNavigate, returnTo }: PortalPageProps & { re
 
       <section className="user-portal-login__visual" aria-label={t("เส้นทางการพัฒนาของนักศึกษา", "Student development journey")}>
         <img className="user-portal-login__cover" src={studentLoginCover} alt="" aria-hidden="true" />
-        <img className="user-portal-login__partner-logo" src={sutPartnerLogo} alt="" aria-hidden="true" />
+        <img className="user-portal-login__partner-logo" src={sutBrandMark} alt="" aria-hidden="true" />
       </section>
     </section>
   </main>
