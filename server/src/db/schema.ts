@@ -134,6 +134,7 @@ const schemaStatements = [
   `ALTER TABLE students ADD COLUMN IF NOT EXISTS study_year TINYINT UNSIGNED NULL AFTER education_level`,
   `ALTER TABLE students ADD COLUMN IF NOT EXISTS phone VARCHAR(30) NULL AFTER major`,
   `ALTER TABLE students ADD COLUMN IF NOT EXISTS pdpa_consented_at DATETIME NULL AFTER phone`,
+  `ALTER TABLE students ADD COLUMN IF NOT EXISTS portal_onboarding_completed_at DATETIME NULL AFTER pdpa_consented_at`,
   `ALTER TABLE students ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at`,
   `CREATE TABLE IF NOT EXISTS competencies (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -367,7 +368,9 @@ const schemaStatements = [
     ('sustainability', 'Sustainability', 9)`,
 ]
 
-const schemaVersion = 1
+// Increment this whenever schemaStatements gains a new migration so existing
+// databases do not skip newly-added columns.
+const schemaVersion = 2
 
 export async function ensureSchema() {
   await pool.query(`CREATE TABLE IF NOT EXISTS app_schema_versions (

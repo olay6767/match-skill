@@ -4,7 +4,7 @@ type Props = { overview: AnalyticsOverview; faculties: AnalyticsBreakdown[]; edu
 
 function BreakdownList({ title, values }: { title: string; values: AnalyticsBreakdown[] }) {
   const maximum = Math.max(...values.map((value) => value.studentCount), 1)
-  return <section className="analytics-breakdown-list" aria-labelledby={`breakdown-${title}`}><h3 id={`breakdown-${title}`}>{title}</h3>{values.length === 0 ? <p>ไม่มีข้อมูลที่ตรงกับตัวกรอง</p> : <ul>{values.map((value) => <li key={value.label}><div><strong>{value.label}</strong><span>{value.studentCount} คน · Pre {value.preCount} · Post {value.postCount} · paired {value.pairedCount}</span></div><i aria-hidden="true"><b style={{ width: `${(value.studentCount / maximum) * 100}%` }} /></i></li>)}</ul>}</section>
+  return <section className="analytics-breakdown-list" aria-labelledby={`breakdown-${title}`}><h3 id={`breakdown-${title}`}>{title}</h3>{values.length === 0 ? <p>ไม่มีข้อมูลที่ตรงกับตัวกรอง</p> : <ul>{values.map((value) => <li key={value.label}><div><strong>{value.label}</strong><span>{value.studentCount} คน · Pre {value.preCount} · Post {value.postCount} · paired {value.pairedCount}</span></div><i className="admin-chart-point admin-chart-point--horizontal" tabIndex={0} aria-label={`${value.label} ${value.studentCount} คน Pre ${value.preCount} Post ${value.postCount} ครบคู่ ${value.pairedCount}`} data-chart-tooltip={`${value.studentCount} คน · Pre ${value.preCount} · Post ${value.postCount} · ครบคู่ ${value.pairedCount}`}><b style={{ width: `${(value.studentCount / maximum) * 100}%` }} /></i></li>)}</ul>}</section>
 }
 
 function ParticipationBreakdown({ overview, faculties, educationLevels }: Props) {

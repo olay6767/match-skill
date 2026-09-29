@@ -54,7 +54,7 @@ const combinedAnalysisSchema = z.object({
   direction: z.enum(['asc', 'desc']).default('desc'),
   filters: activityAnalysisFiltersSchema.optional(),
   participantFiltersByActivity: z.record(z.string().regex(/^\d+$/), z.object({
-    major: z.string().trim().max(160).optional(),
+    majors: z.array(z.string().trim().min(1).max(160)).max(50).optional(),
     educationLevel: z.string().trim().max(120).optional(),
     studyYear: z.coerce.number().int().min(1).max(20).optional(),
   })).optional(),

@@ -1341,3 +1341,163 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Balanced selected-activity action bar. */
+.activity-analysis-selection-bar {
+  min-height: 76px;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 24px;
+  padding: 14px 20px;
+}
+
+.activity-analysis-selection-bar > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+  align-content: center;
+}
+
+.activity-analysis-selection-bar > div:last-child {
+  display: grid;
+  flex: 0 0 auto;
+  grid-template-columns: repeat(3, minmax(132px, auto));
+  align-items: stretch;
+  gap: 10px;
+}
+
+.activity-analysis-selection-bar > div:last-child button {
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .activity-analysis-selection-bar {
+    display: grid;
+    gap: 12px;
+  }
+
+  .activity-analysis-selection-bar > div:last-child {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .activity-analysis-selection-bar {
+    padding: 13px;
+  }
+
+  .activity-analysis-selection-bar > div:last-child {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .activity-analysis-selection-bar > div:last-child button:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Clean, balanced selected-activities dialog. */
+.activity-analysis-modal:not(.activity-analysis-modal--detail) {
+  width: min(720px, 100%);
+  padding: 26px;
+  border: 0;
+  border-radius: 12px;
+  background: #fffdfb;
+  box-shadow: 0 24px 64px rgba(58, 40, 28, .2);
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__header {
+  align-items: center;
+  padding-bottom: 18px;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__header p {
+  margin: 4px 0 0;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__header > button,
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-selected-list button,
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__actions button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 14px;
+  background: #f3f1ef;
+  color: #4a382c;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__header > button:hover,
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-selected-list button:hover {
+  background: #ebe7e3;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__search {
+  gap: 8px;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__search input {
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 6px;
+  background: #f4f2f0;
+  box-shadow: none;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__search input:focus {
+  outline: 3px solid rgba(232, 117, 34, .2);
+  background: #fff;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-selected-list {
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-selected-list li {
+  min-height: 76px;
+  border: 0;
+  border-radius: 6px;
+  padding: 14px;
+  background: #f7f5f3;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-selected-list li > div {
+  min-width: 0;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-selected-list button {
+  flex: 0 0 auto;
+  color: #a94f14;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__actions {
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__actions button {
+  min-width: 120px;
+  background: #ef6c18;
+  color: #fff;
+}
+
+@media (max-width: 520px) {
+  .activity-analysis-modal:not(.activity-analysis-modal--detail) {
+    padding: 20px;
+    border-radius: 10px;
+  }
+
+  .activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-modal__header {
+    display: flex;
+  }
+
+  .activity-analysis-modal:not(.activity-analysis-modal--detail) .activity-analysis-selected-list li {
+    align-items: flex-start;
+  }
+}

@@ -1,5 +1,23 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express'
 import { ZodError } from 'zod'
+import { setDatabaseAvailable } from '../db/availability.js'
+
+const databaseConnectionErrorCodes = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ER_GET_CONNECTION_TIMEOUT',
+  'ER_CONNECTION_TIMEOUT',
+  'ER_CMD_CONNECTION_CLOSED',
+  'ER_SOCKET_UNEXPECTED_CLOSE',
+  'PROTOCOL_CONNECTION_LOST',
+])
+
+function isDatabaseConnectionError(error: unknown) {
+  if (!error || typeof error !== 'object') return false
+  const code = 'code' in error ? String(error.code) : ''
+  return databaseConnectionErrorCodes.has(code)
+}
 
 export class ApiError extends Error {
   constructor(
@@ -29,6 +47,13 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
 
   if (error instanceof ApiError) {
     response.status(error.status).json({ message: error.message })
+    return
+  }
+
+  if (isDatabaseConnectionError(error)) {
+    setDatabaseAvailable(false)
+    console.error('Database connection unavailable:', error)
+    response.status(503).json({ message: 'ระบบฐานข้อมูลไม่พร้อมใช้งาน กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง' })
     return
   }
 

@@ -1,4 +1,5 @@
 import { pool } from '../db/pool.js'
+import { calculateDescriptiveStatistics } from './finalAnalysisService.js'
 
 export type ActivityAnalysisMode = 'comparison'
 export type ActivityAnalysisMetric = 'score' | 'growth' | 'response' | 'attendees'
@@ -16,7 +17,7 @@ export type ActivityAnalysisFilters = {
 }
 
 export type ParticipantAnalysisFilters = {
-  major?: string
+  majors?: string[]
   educationLevel?: string
   studyYear?: number
 }
@@ -88,11 +89,15 @@ type SummaryRow = {
 
 type GroupRow = { label: string | null; activity_count: number | string; score_sum: number | string; score_count: number | string }
 type CompetencyRow = { code: string; name: string; activity_count: number | string; score_average: number | string | null; pre_average: number | string | null; post_average: number | string | null; score_min: number | string | null; score_max: number | string | null; answer_count: number | string; pre_count: number | string; post_count: number | string; paired_count: number | string }
+type FacultyScoreRow = { faculty: string | null; phase: 'pre' | 'post'; score: number | string }
 
 function participantConditions(filters: ParticipantAnalysisFilters | undefined, alias: string) {
   const clauses: string[] = []
   const values: Array<string | number> = []
-  if (filters?.major) { clauses.push(`NULLIF(TRIM(${alias}.major), '') = ?`); values.push(filters.major) }
+  if (filters?.majors?.length) {
+    clauses.push(`NULLIF(TRIM(${alias}.major), '') IN (${filters.majors.map(() => '?').join(', ')})`)
+    values.push(...filters.majors)
+  }
   if (filters?.educationLevel) { clauses.push(`NULLIF(TRIM(${alias}.education_level), '') = ?`); values.push(filters.educationLevel) }
   if (filters?.studyYear !== undefined) { clauses.push(`${alias}.study_year = ?`); values.push(filters.studyYear) }
   return { condition: clauses.join(' AND '), values }
@@ -331,6 +336,7 @@ export async function getCombinedActivityAnalysis(input: CombinedActivityAnalysi
   const filters = input.filters ?? {}
   const base = selectedBase(filters, activityIds, input.participantFiltersByActivity)
   const competencyParticipantFilter = participantConditionsByActivity(activityIds, input.participantFiltersByActivity, 'competency_student', 'sr')
+  const facultyParticipantFilter = participantConditionsByActivity(activityIds, input.participantFiltersByActivity, 'faculty_student', 'sr')
   const summarySql = `WITH selected AS (${base.sql})
     SELECT COUNT(*) AS selected_count, COALESCE(SUM(attendee_count), 0) AS attendee_total,
       COALESCE(SUM(evaluator_count), 0) AS evaluator_total,
@@ -394,7 +400,22 @@ export async function getCombinedActivityAnalysis(input: CombinedActivityAnalysi
         GROUP BY paired_response.activity_id, paired_response.student_id
         HAVING SUM(paired_response.phase = 'pre') > 0 AND SUM(paired_response.phase = 'post') > 0
       )`
-  const [summaryRows, countRows, pageRows, topRows, bottomRows, scoreTopRows, improvementTopRows, categoryRows, organizerRows, monthRows, competencyRows, selectedActivities, participantOptionRows] = await Promise.all([
+  const facultyStatisticsSql = `
+    SELECT NULLIF(TRIM(faculty_student.faculty), '') AS faculty, sr.phase, AVG(ra.score) AS score
+    FROM survey_responses sr
+    JOIN students faculty_student ON faculty_student.id = sr.student_id
+    JOIN response_answers ra ON ra.response_id = sr.id
+    WHERE sr.activity_id IN (${activityIds.map(() => '?').join(', ')})
+      AND EXISTS (
+        SELECT 1 FROM survey_responses paired_response
+        WHERE paired_response.activity_id = sr.activity_id
+          AND paired_response.student_id = sr.student_id
+        GROUP BY paired_response.activity_id, paired_response.student_id
+        HAVING SUM(paired_response.phase = 'pre') > 0 AND SUM(paired_response.phase = 'post') > 0
+      )
+      ${facultyParticipantFilter.condition ? `AND (${facultyParticipantFilter.condition})` : ''}
+    GROUP BY sr.id, faculty_student.faculty, sr.phase`
+  const [summaryRows, countRows, pageRows, topRows, bottomRows, scoreTopRows, improvementTopRows, categoryRows, organizerRows, monthRows, competencyRows, selectedActivities, participantOptionRows, facultyScoreRows] = await Promise.all([
     pool.query<SummaryRow[]>(summarySql, base.values),
     pool.query<Array<{ total: number | string }>>(countSql, base.values),
     pool.query<ActivityMetricRow[]>(pageSql, [...base.values, input.pageSize, (input.page - 1) * input.pageSize]),
@@ -408,6 +429,7 @@ export async function getCombinedActivityAnalysis(input: CombinedActivityAnalysi
     pool.query<CompetencyRow[]>(competencySql, [...base.values, ...competencyParticipantFilter.values]),
     selectedActivityNames(activityIds),
     pool.query<Array<{ activity_id: number | string; major: string | null; education_level: string | null; study_year: number | string | null }>>(participantOptionsSql, activityIds),
+    pool.query<FacultyScoreRow[]>(facultyStatisticsSql, [...activityIds, ...facultyParticipantFilter.values]),
   ])
   const summary = summaryRows[0]
   const attendeeTotal = number(summary?.attendee_total)
@@ -433,6 +455,16 @@ export async function getCombinedActivityAnalysis(input: CombinedActivityAnalysi
   const topActivity = scoreTopRows[0] ? serializeActivity(scoreTopRows[0]) : null
   const mostImprovedActivity = improvementTopRows[0] ? serializeActivity(improvementTopRows[0]) : null
   const insights: string[] = []
+  const facultyStatistics = Array.from(new Set(facultyScoreRows.map((row) => row.faculty?.trim() || 'ไม่ระบุคณะ')))
+    .sort((left, right) => left.localeCompare(right, 'th'))
+    .map((faculty) => {
+      const rows = facultyScoreRows.filter((row) => (row.faculty?.trim() || 'ไม่ระบุคณะ') === faculty)
+      return {
+        faculty,
+        pre: calculateDescriptiveStatistics(rows.filter((row) => row.phase === 'pre').map((row) => number(row.score))),
+        post: calculateDescriptiveStatistics(rows.filter((row) => row.phase === 'post').map((row) => number(row.score))),
+      }
+    })
   if (averagePreScore !== null && averagePostScore !== null && meanDifference !== null) insights.push(`ผู้ตอบที่ทำครบคู่มีคะแนนเฉลี่ยรวมจาก ${averagePreScore.toFixed(2)} ใน Pre-test เป็น ${averagePostScore.toFixed(2)} ใน Post-test (${meanDifference >= 0 ? '+' : ''}${meanDifference.toFixed(2)} คะแนน)`)
   if (topActivity?.averageScore !== null && topActivity?.averageScore !== undefined) insights.push(`กิจกรรมที่มีคะแนนประเมินเฉลี่ยสูงสุดคือ ${topActivity.name} (${topActivity.averageScore.toFixed(2)})`)
   if (mostImprovedActivity?.meanDifference !== null && mostImprovedActivity?.meanDifference !== undefined) insights.push(`กิจกรรมที่มีคะแนนเพิ่มขึ้นมากที่สุดคือ ${mostImprovedActivity.name} (${mostImprovedActivity.meanDifference >= 0 ? '+' : ''}${mostImprovedActivity.meanDifference.toFixed(2)} คะแนน)`)
@@ -445,7 +477,7 @@ export async function getCombinedActivityAnalysis(input: CombinedActivityAnalysi
     participantFilters: {
       selectedByActivity: Object.fromEntries(activityIds.map((activityId) => {
         const selectedFilter = input.participantFiltersByActivity?.[String(activityId)]
-        return [activityId, { major: selectedFilter?.major ?? '', educationLevel: selectedFilter?.educationLevel ?? '', studyYear: selectedFilter?.studyYear ?? null }]
+        return [activityId, { majors: selectedFilter?.majors ?? [], educationLevel: selectedFilter?.educationLevel ?? '', studyYear: selectedFilter?.studyYear ?? null }]
       })),
       optionsByActivity: Object.fromEntries(activityIds.map((activityId) => {
         const rows = participantOptionRows.filter((row) => number(row.activity_id) === activityId)
@@ -470,7 +502,7 @@ export async function getCombinedActivityAnalysis(input: CombinedActivityAnalysi
       highestScoreActivity: topActivity ? { id: topActivity.id, name: topActivity.name, value: topActivity.averageScore } : null,
       mostImprovedActivity: mostImprovedActivity ? { id: mostImprovedActivity.id, name: mostImprovedActivity.name, value: mostImprovedActivity.meanDifference } : null,
     },
-    insights, categorySummary, organizerSummary, monthSummary,
+    insights, categorySummary, organizerSummary, monthSummary, facultyStatistics,
     commonCompetencies: competencyRows.map((row) => {
       const preAverage = row.pre_average === null ? null : round(number(row.pre_average))
       const postAverage = row.post_average === null ? null : round(number(row.post_average))
@@ -505,11 +537,11 @@ export async function createCombinedActivityAnalysisExport(input: CombinedActivi
   sheet.mergeCells('B4:I4')
   const filterLabels: Record<string, string> = { q: 'คำค้น', from: 'ตั้งแต่', to: 'ถึง', category: 'กลุ่มเป้าหมาย', organizer: 'ผู้จัด', status: 'สถานะ', evaluation: 'ข้อมูลประเมิน' }
   const activeFilters = Object.entries(input.filters ?? {}).filter(([, value]) => Boolean(value)).map(([key, value]) => `${filterLabels[key] ?? key}: ${value}`)
-  const participantFilterLabels: Record<string, string> = { major: 'สาขาวิชา', educationLevel: 'ระดับการศึกษา', studyYear: 'ชั้นปี / กลุ่มรุ่น' }
+  const participantFilterLabels: Record<string, string> = { majors: 'สาขาวิชา', educationLevel: 'ระดับการศึกษา', studyYear: 'ชั้นปี / กลุ่มรุ่น' }
   const activityNames = new Map(report.selectedActivities.map((activity) => [String(activity.id), activity.name]))
   Object.entries(input.participantFiltersByActivity ?? {}).forEach(([activityId, filters]) => {
     Object.entries(filters).filter(([, value]) => value !== undefined && value !== '').forEach(([key, value]) => {
-      activeFilters.push(`${activityNames.get(activityId) ?? `กิจกรรม #${activityId}`} · ${participantFilterLabels[key] ?? key}: ${value}`)
+        activeFilters.push(`${activityNames.get(activityId) ?? `กิจกรรม #${activityId}`} · ${participantFilterLabels[key] ?? key}: ${Array.isArray(value) ? value.join(', ') : value}`)
     })
   })
   sheet.getCell('B4').value = activeFilters.length ? activeFilters.join(' | ') : 'ไม่ใช้ตัวกรอง'

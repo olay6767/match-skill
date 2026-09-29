@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { StudentPortalApiError, getStudentPortalActivities, getStudentPortalActivity, getStudentPortalProfile, getStudentPortalProgress, loginStudentPortal } from './api'
+import { StudentPortalApiError, completeStudentPortalOnboarding, getStudentPortalActivities, getStudentPortalActivity, getStudentPortalProfile, getStudentPortalProgress, loginStudentPortal } from './api'
 import { isValidStudentCode, normalizeStudentCode } from '../../../lib/studentCode'
 import { clearStudentPortalSession, getStudentPortalSession, saveStudentPortalSession } from './session'
 import type { CompetencyResult, JoinedActivity, StudentResult, UserActivityDetail, UserProfile, UserProgressActivity } from './types'
@@ -9,7 +9,6 @@ import ViewModeToggle, { type ViewMode } from '../../../shared/components/ui/Vie
 import RichTextContent from '../../../shared/components/ui/RichTextContent'
 import activityHeaderIcon from '../../../assets/9.png'
 import comparisonHeroImage from '../../../assets/7.png'
-import studentLoginArtwork from "../../../assets/8.png"
 import comparisonFocusIcon from '../../../assets/77.png'
 import comparisonChangeIcon from '../../../assets/79.png'
 import comparisonStrengthIcon from '../../../assets/88.png'
@@ -28,6 +27,9 @@ import facultyProfileIcon from '../../../assets/สำนักวิชา.png'
 import englishFlag from '../../../assets/6666.jpg'
 import thaiFlag from '../../../assets/888.jpg'
 import studentPortalLogo from '../../../assets/93.png'
+import sutPartnerLogo from '../../../assets/24.png'
+import studentLoginCover from '../../../assets/31.png'
+import studentAnniversaryLogo from '../../../assets/35.png'
 import { trackUserEvent } from '../../usage/tracker'
 import './userPortal.css'
 import "./userPortalLoginRefresh.css"
@@ -38,6 +40,7 @@ type PortalLanguage = 'TH' | 'EN'
 
 const PORTAL_LANGUAGE_KEY = 'seda:user-language'
 const PORTAL_LANGUAGE_EVENT = 'seda:portal-language-change'
+const PORTAL_ONBOARDING_KEY = 'seda:user-onboarding:v1'
 
 function readPortalLanguage(): PortalLanguage {
   try {
@@ -189,8 +192,20 @@ function isSessionError(error: unknown) {
 function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: PortalPageProps & { title: string; titleEn: string; eyebrow: string; active: 'activities' | 'progress' | 'profile'; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
+  const [guideStep, setGuideStep] = useState(0)
   const languageRef = useRef<HTMLDivElement>(null)
   const { language, setLanguage, t } = usePortalLanguage()
+  const onboardingStorageKey = useMemo(() => {
+    const studentCode = getStudentPortalSession()?.studentCode
+    return `${PORTAL_ONBOARDING_KEY}:${studentCode ?? 'device'}`
+  }, [])
+  const rememberGuideCompletion = useCallback(() => {
+    try { window.localStorage.setItem(onboardingStorageKey, 'complete') } catch { /* Continue without local persistence. */ }
+    void completeStudentPortalOnboarding().catch(() => {
+      // Local persistence still prevents repeat prompts when the API is temporarily unavailable.
+    })
+  }, [onboardingStorageKey])
 
   useEffect(() => {
     if (!languageOpen) return
@@ -208,6 +223,38 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
     }
   }, [languageOpen])
 
+  useEffect(() => {
+    if (active !== 'activities') return
+    if (getStudentPortalSession()?.onboardingCompleted) return
+    try {
+      if (window.localStorage.getItem(onboardingStorageKey)) return
+    } catch {
+      // Show the guide when storage is unavailable.
+    }
+    const timer = window.setTimeout(() => {
+      setGuideStep(0)
+      setGuideOpen(true)
+    }, 550)
+    return () => window.clearTimeout(timer)
+  }, [active, onboardingStorageKey])
+
+  useEffect(() => {
+    if (!guideOpen) return
+    const previousOverflow = document.body.style.overflow
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        rememberGuideCompletion()
+        setGuideOpen(false)
+      }
+    }
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [guideOpen, rememberGuideCompletion])
+
   const copy = {
     activities: t('กิจกรรมของฉัน', 'My Activities'),
     progress: t('พัฒนาการ', 'My Progress'),
@@ -217,6 +264,47 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
     closeMenu: t('ปิดเมนู', 'Close menu'),
     languageMenu: t('เลือกภาษา', 'Choose language'),
     viewProfile: t('ดูโปรไฟล์', 'View profile'),
+    openGuide: t('เปิดคู่มือการใช้งาน', 'Open user guide'),
+  }
+
+  const guideSteps = [
+    {
+      icon: 'rocket' as const,
+      eyebrow: t('ยินดีต้อนรับ', 'Welcome'),
+      title: t('เริ่มใช้งาน SEDA ในไม่กี่ขั้นตอน', 'Get started with SEDA in a few steps'),
+      description: t('เรียนรู้วิธีเลือกกิจกรรม ทำแบบประเมิน และติดตามพัฒนาการของตนเองได้อย่างง่ายดาย', 'Learn how to choose activities, complete assessments, and easily track your own progress.'),
+      tips: [t('ใช้เวลาไม่ถึง 1 นาที', 'Takes less than a minute'), t('เปิดดูใหม่ได้ทุกเมื่อ', 'Available again at any time')],
+    },
+    {
+      icon: 'activities' as const,
+      eyebrow: t('ขั้นตอนที่ 1', 'Step 1'),
+      title: t('กิจกรรมของฉัน', 'My Activities'),
+      description: t('เลือกกิจกรรมเพื่อดูรายละเอียด วัน เวลา สถานที่ และสถานะการประเมิน', 'Choose an activity to view its details, date, time, location, and assessment status.'),
+      tips: [t('สลับมุมมองตารางหรือรายการได้', 'Switch between grid and list views'), t('เลือกหลายกิจกรรมเพื่อเปรียบเทียบได้', 'Select activities to compare')],
+    },
+    {
+      icon: 'analytics' as const,
+      eyebrow: t('ขั้นตอนที่ 2', 'Step 2'),
+      title: t('ผลการพัฒนาทักษะ', 'Skill Development Results'),
+      description: t('ตรวจสอบคะแนน PRE/POST และเปรียบเทียบพัฒนาการของแต่ละทักษะผ่านกราฟ', 'Review PRE/POST scores and compare the development of each skill through charts.'),
+      tips: [t('เลือกดูทีละกิจกรรมหรือทั้งหมดได้', 'View one activity or all activities'), t('แตะกราฟเพื่อดูคะแนนเพิ่มเติม', 'Interact with charts for more detail')],
+    },
+    {
+      icon: 'person' as const,
+      eyebrow: t('ขั้นตอนที่ 3', 'Step 3'),
+      title: t('ข้อมูลส่วนตัวและการตั้งค่า', 'Personal Information and Settings'),
+      description: t('ตรวจสอบข้อมูลนักศึกษาและเปลี่ยนภาษาผ่านไอคอนธงด้านบน', 'Review student information and change the language using the flag icon at the top.'),
+      tips: [t('กดปุ่มข้อมูลด้านบนเพื่อเปิดไกด์อีกครั้ง', 'Use the info button to reopen this guide'), t('พร้อมแล้ว เริ่มสำรวจกิจกรรมได้เลย', 'You are ready to explore your activities')],
+    },
+  ]
+  const currentGuideStep = guideSteps[guideStep]
+  const closeGuide = () => {
+    rememberGuideCompletion()
+    setGuideOpen(false)
+  }
+  const openGuide = () => {
+    setGuideStep(0)
+    setGuideOpen(true)
   }
 
   const logout = () => {
@@ -233,7 +321,7 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
     setLanguageOpen(false)
   }
 
-  return <div className="user-portal-shell">
+  return <div className={`user-portal-shell${guideOpen ? ' is-guide-open' : ''}`}>
     <aside className={'user-portal-sidebar' + (menuOpen ? ' is-open' : '')}>
       <div className="user-portal-brand">
         <img className="user-portal-brand__logo" src={studentPortalLogo} alt="SEDA" />
@@ -241,9 +329,9 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
         <button type="button" className="user-portal-close" onClick={() => setMenuOpen(false)} aria-label={copy.closeMenu}><Icon name="close" /></button>
       </div>
       <nav>
-        <button type="button" className={active === 'activities' ? 'is-active' : ''} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={activitiesNavIcon} alt="" /></span><span>{copy.activities}</span></button>
-        <button type="button" className={active === 'progress' ? 'is-active' : ''} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={progressNavIcon} alt="" /></span><span>{copy.progress}</span></button>
-        <button type="button" className={active === 'profile' ? 'is-active' : ''} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={profileNavIcon} alt="" /></span><span>{copy.profile}</span></button>
+        <button type="button" className={`${active === 'activities' ? 'is-active' : ''}${guideOpen && guideStep === 1 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={activitiesNavIcon} alt="" /></span><span>{copy.activities}</span></button>
+        <button type="button" className={`${active === 'progress' ? 'is-active' : ''}${guideOpen && guideStep === 2 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={progressNavIcon} alt="" /></span><span>{copy.progress}</span></button>
+        <button type="button" className={`${active === 'profile' ? 'is-active' : ''}${guideOpen && guideStep === 3 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={profileNavIcon} alt="" /></span><span>{copy.profile}</span></button>
       </nav>
       <button type="button" className="user-portal-logout" onClick={logout}><Icon name="logout" />{copy.logout}</button>
     </aside>
@@ -253,6 +341,7 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
         <button type="button" className="user-portal-menu" onClick={() => setMenuOpen(true)} aria-label={copy.openMenu}><Icon name="menu" /></button>
         <div className="user-portal-header-title"><span>{eyebrow}</span><h1>{t(title, titleEn)}</h1></div>
         <div className="user-portal-header-actions">
+          <button type="button" className="user-portal-guide-button" aria-label={copy.openGuide} title={copy.openGuide} onClick={openGuide}><Icon name="info" /></button>
           <div className="user-portal-language-picker" ref={languageRef}>
             <button type="button" className={'user-portal-language-button' + (languageOpen ? ' is-open' : '')} aria-label={copy.languageMenu} title={copy.languageMenu} aria-haspopup="menu" aria-expanded={languageOpen} onClick={() => setLanguageOpen((open) => !open)}><img src={language === 'TH' ? thaiFlag : englishFlag} alt="" /></button>
             {languageOpen && <div className="user-portal-language-menu" role="menu" aria-label={copy.languageMenu}>
@@ -270,6 +359,30 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
       <button type="button" className={active === 'progress' ? 'is-active' : ''} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={progressNavIcon} alt="" /></span><span>{copy.progress}</span></button>
       <button type="button" className={active === 'profile' ? 'is-active' : ''} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={profileNavIcon} alt="" /></span><span>{copy.profile}</span></button>
     </nav>
+    {guideOpen && <div className="user-portal-guide" role="presentation">
+      <div className="user-portal-guide__backdrop" />
+      <section className={`user-portal-guide__dialog is-step-${guideStep}`} role="dialog" aria-modal="true" aria-labelledby="user-portal-guide-title" aria-describedby="user-portal-guide-description">
+        <header>
+          <span>{t('คู่มือเริ่มต้นใช้งาน', 'Getting started guide')}</span>
+          <button type="button" onClick={closeGuide} aria-label={t('ปิดคู่มือ', 'Close guide')}><Icon name="close" /></button>
+        </header>
+        <div className={`user-portal-guide__icon is-step-${guideStep}`} aria-hidden="true">
+          <img src={guideStep === 0 ? studentPortalLogo : guideStep === 1 ? activitiesNavIcon : guideStep === 2 ? progressNavIcon : profileNavIcon} alt="" />
+        </div>
+        <small>{currentGuideStep.eyebrow}</small>
+        <h2 id="user-portal-guide-title">{currentGuideStep.title}</h2>
+        <p id="user-portal-guide-description">{currentGuideStep.description}</p>
+        <ul>{currentGuideStep.tips.map((tip) => <li key={tip}><Icon name="check" />{tip}</li>)}</ul>
+        <div className="user-portal-guide__progress" aria-label={t(`ขั้นตอน ${guideStep + 1} จาก ${guideSteps.length}`, `Step ${guideStep + 1} of ${guideSteps.length}`)}>{guideSteps.map((_, index) => <i key={index} className={index === guideStep ? 'is-active' : index < guideStep ? 'is-complete' : ''} />)}</div>
+        <footer>
+          <button type="button" className="is-skip" onClick={closeGuide}>{t('ข้ามคำแนะนำ', 'Skip guide')}</button>
+          <div>
+            {guideStep > 0 && <button type="button" className="is-back" onClick={() => setGuideStep((step) => step - 1)}><Icon name="chevronLeft" />{t('ย้อนกลับ', 'Back')}</button>}
+            <button type="button" className="is-next" onClick={() => guideStep === guideSteps.length - 1 ? closeGuide() : setGuideStep((step) => step + 1)}>{guideStep === guideSteps.length - 1 ? t('เริ่มใช้งาน', 'Get started') : t('ถัดไป', 'Next')} {guideStep < guideSteps.length - 1 && <Icon name="chevronRight" />}</button>
+          </div>
+        </footer>
+      </section>
+    </div>}
   </div>
 }
 
@@ -314,7 +427,7 @@ export function UserPortalLogin({ onNavigate, returnTo }: PortalPageProps & { re
     setBusy(true)
     setError("")
     try {
-      saveStudentPortalSession(await loginStudentPortal(normalized))
+      saveStudentPortalSession({ ...(await loginStudentPortal(normalized)), studentCode: normalized })
       trackUserEvent("interaction", "login_success")
       trackUserEvent("interaction", "form_success:student_portal_login")
       onNavigate(returnTo?.startsWith("/user/") && returnTo !== "/user/login" ? returnTo : "/user/activities", true)
@@ -331,10 +444,33 @@ export function UserPortalLogin({ onNavigate, returnTo }: PortalPageProps & { re
     <span className="user-portal-login__ambient user-portal-login__ambient--two" aria-hidden="true" />
 
     <section className="user-portal-login__card" aria-label={t("หน้าเข้าสู่ระบบนักศึกษา", "Student sign-in page")}>
+      <span className="user-portal-login__desktop-atmosphere" aria-hidden="true">
+        <i className="user-portal-login__leaf user-portal-login__leaf--one" />
+        <i className="user-portal-login__leaf user-portal-login__leaf--two" />
+        <i className="user-portal-login__leaf user-portal-login__leaf--three" />
+        <i className="user-portal-login__leaf user-portal-login__leaf--four" />
+        <i className="user-portal-login__leaf user-portal-login__leaf--five" />
+        <i className="user-portal-login__leaf user-portal-login__leaf--six" />
+        <i className="user-portal-login__leaf user-portal-login__leaf--seven" />
+        <i className="user-portal-login__leaf user-portal-login__leaf--eight" />
+        <i className="user-portal-login__leaf user-portal-login__leaf--nine" />
+        <i className="user-portal-login__leaf user-portal-login__leaf--ten" />
+      </span>
       <section className="user-portal-login__panel">
+        <svg className="user-portal-login__desktop-curve" viewBox="0 0 260 1000" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          <path d="M110 0C245 180 235 310 92 430C-20 525 8 690 150 770C240 822 244 920 135 1000H260V0Z" />
+        </svg>
         <form data-usage-form="student_portal_login" onSubmit={submit} noValidate>
+          <div className="user-portal-login__top-logos" aria-label="SEDA Student Portal and SUT anniversary">
+            <img className="user-portal-login__seda-logo" src={studentPortalLogo} alt="SEDA Student Portal" />
+            <span aria-hidden="true" />
+            <img className="user-portal-login__anniversary-logo" src={studentAnniversaryLogo} alt="SUT 36th Anniversary" />
+          </div>
+          <div className="user-portal-login__brand" aria-hidden="true">
+            <img src={studentPortalLogo} alt="SEDA" />
+            <span>STUDENT PORTAL</span>
+          </div>
           <header className="user-portal-login__heading">
-            <small>{t("พื้นที่สำหรับนักศึกษา", "STUDENT ACCESS")}</small>
             <h1>{t("เริ่มต้นพื้นที่ของคุณ", "Enter your space")}</h1>
             <p>{t("กรอกรหัสนักศึกษาเพื่อดูกิจกรรมและพัฒนาการ", "Enter your student ID to view activities and progress.")}</p>
           </header>
@@ -353,29 +489,12 @@ export function UserPortalLogin({ onNavigate, returnTo }: PortalPageProps & { re
           </button>
           <em>{t("ใช้รหัสนักศึกษาของคุณเพื่อเข้าถึงข้อมูลส่วนบุคคล", "Use your student ID to access your personal information.")}</em>
         </form>
+        <p className="user-portal-login__contact">{t("หากพบปัญหาในการเข้าสู่ระบบ กรุณาติดต่อผู้ดูแลระบบ", "If you have trouble signing in, please contact the system administrator.")}</p>
       </section>
 
       <section className="user-portal-login__visual" aria-label={t("เส้นทางการพัฒนาของนักศึกษา", "Student development journey")}>
-        <div className="user-portal-login__visual-brand"><img src={studentPortalLogo} alt="SEDA" /><span>STUDENT PORTAL</span></div>
-        <div className="user-portal-login__visual-copy">
-          <span>LEARN · GROW · ACHIEVE</span>
-          <h2>{t("ทุกก้าวของคุณ", "Every step")}<br /><strong>{t("คือการเติบโต", "moves you forward")}</strong></h2>
-          <p>{t("ติดตามกิจกรรม ผลประเมิน และความก้าวหน้าได้ในที่เดียว", "Track activities, results, and progress in one place.")}</p>
-        </div>
-
-        <div className="user-portal-login__scene" aria-hidden="true">
-          <span className="user-portal-login__orbit user-portal-login__orbit--outer" />
-          <span className="user-portal-login__orbit user-portal-login__orbit--inner" />
-          <span className="user-portal-login__scene-shadow" />
-          <img className="user-portal-login__artwork" src={studentLoginArtwork} alt="" />
-          <span className="user-portal-login__skill user-portal-login__skill--target"><img src={comparisonChangeIcon} alt="" /></span>
-          <span className="user-portal-login__skill user-portal-login__skill--idea"><img src={comparisonStrengthIcon} alt="" /></span>
-          <span className="user-portal-login__skill user-portal-login__skill--rocket"><img src={progressDevelopmentIcon} alt="" /></span>
-          <span className="user-portal-login__skill user-portal-login__skill--award"><img src={progressAchievementIcon} alt="" /></span>
-          <i className="user-portal-login__spark user-portal-login__spark--one" />
-          <i className="user-portal-login__spark user-portal-login__spark--two" />
-          <i className="user-portal-login__spark user-portal-login__spark--three" />
-        </div>
+        <img className="user-portal-login__cover" src={studentLoginCover} alt="" aria-hidden="true" />
+        <img className="user-portal-login__partner-logo" src={sutPartnerLogo} alt="" aria-hidden="true" />
       </section>
     </section>
   </main>
@@ -412,7 +531,7 @@ function ActivityCard({ activity, onNavigate, selectionMode = false, selected = 
       <p><Icon name="calendar" />{formatDate(activity.startDate, language)}</p>
       <p><Icon name="location" />{localizedActivityLocation(activity, language) ?? t('ไม่ระบุสถานที่', 'Location not specified')}</p>
       <div className="user-portal-phase"><span className={activity.preResponse ? 'done' : ''}>PRE {activity.preResponse && <Icon name="check" />}</span><span className={activity.postResponse ? 'done' : ''}>POST {activity.postResponse && <Icon name="check" />}</span></div>
-      <button type="button" onClick={() => onNavigate(`/user/activities/${activity.activityId}`)}>{t('ดูรายละเอียด', 'View details')} <Icon name="chevronRight" /></button>
+      <button type="button" onClick={() => onNavigate(`/user/activities/${activity.activityId}`)}>{t('ดูรายละเอียดเพิ่มเติม', 'View more details')} <Icon name="chevronRight" /></button>
     </div>
   </article>
 }
@@ -852,6 +971,7 @@ function SkillRadar({ results }: { results: StudentResult[] }) {
   const { language, t } = usePortalLanguage()
   const [selectedCompetency, setSelectedCompetency] = useState<CompetencyResult | null>(null)
   const [hoveredCompetency, setHoveredCompetency] = useState<CompetencyResult | null>(null)
+  const [visiblePhases, setVisiblePhases] = useState<Record<'pre' | 'post', boolean>>({ pre: true, post: true })
   const activeCompetency = hoveredCompetency ?? selectedCompetency
   const latest = new Map<'pre' | 'post', StudentResult>()
   for (const result of results) {
@@ -872,13 +992,14 @@ function SkillRadar({ results }: { results: StudentResult[] }) {
   }
   const points = (values: Map<number, number>) => competencies.map((item, index) => point(index, values.get(item.competencyId) ?? 0)).map((item) => `${item.x},${item.y}`).join(' ')
   const series = (['pre', 'post'] as const).flatMap((phase) => { const result = latest.get(phase); return result ? [{ phase, values: new Map(result.competencies.map((item) => [item.competencyId, item.levelValue])) }] : [] })
-  const activeScores = activeCompetency ? series.flatMap((item) => { const score = item.values.get(activeCompetency.competencyId); return score === undefined ? [] : [{ phase: item.phase, score }] }) : []
+  const visibleSeries = series.filter((item) => visiblePhases[item.phase])
+  const activeScores = activeCompetency ? visibleSeries.flatMap((item) => { const score = item.values.get(activeCompetency.competencyId); return score === undefined ? [] : [{ phase: item.phase, score }] }) : []
 
   return <section className="user-portal-radar" aria-labelledby="skill-radar-title">
     <header className="user-portal-radar__header">
       <span className="user-portal-radar__header-icon" aria-hidden="true"><img className="user-bar-chart-artwork" src={barChartArtwork} alt="" /></span>
       <div className="user-portal-radar__heading-copy"><small>SKILL RADAR</small><h2 id="skill-radar-title">{t('ภาพรวมทักษะ', 'Skill overview')}</h2><p>{t('เปรียบเทียบคะแนนแต่ละสมรรถนะบนสเกล 1–7', 'Compare competency scores on a 1–7 scale.')}</p></div>
-      <div className="user-portal-radar__legend">{series.map((item) => <span key={item.phase} className={item.phase}>{item.phase === 'pre' ? t('ก่อนเข้าร่วม (PRE)', 'Before participation (PRE)') : t('หลังเข้าร่วม (POST)', 'After participation (POST)')}</span>)}</div>
+      <div className="user-portal-radar__legend" role="group" aria-label={t('เลือกข้อมูลที่แสดงในกราฟ', 'Choose data shown in the chart')}>{series.map((item) => <button type="button" key={item.phase} className={`${item.phase}${visiblePhases[item.phase] ? ' is-visible' : ' is-hidden'}`} aria-pressed={visiblePhases[item.phase]} onClick={() => setVisiblePhases((current) => ({ ...current, [item.phase]: !current[item.phase] }))}>{item.phase === 'pre' ? t('ก่อนเข้าร่วม (PRE)', 'Before participation (PRE)') : t('หลังเข้าร่วม (POST)', 'After participation (POST)')}</button>)}</div>
     </header>
     <div className="user-portal-radar__chart">
       {activeCompetency && <div className="user-portal-radar__tooltip" role="tooltip"><strong>{activeCompetency.displayOrder}</strong><div className="user-portal-radar__tooltip-content"><span>{localizedCompetencyName(activeCompetency.name, activeCompetency.displayOrder, language)}</span><div className="user-portal-radar__tooltip-values">{activeScores.map((item) => <em className={item.phase} key={item.phase}>{item.phase.toUpperCase()} {item.score.toFixed(1)}</em>)}</div></div></div>}
@@ -894,7 +1015,7 @@ function SkillRadar({ results }: { results: StudentResult[] }) {
             <text x={label.x} y={label.y} textAnchor="middle" dominantBaseline="middle">{item.displayOrder}</text>
           </g>
         })}
-        {series.map((item) => <g className={`user-portal-radar__series ${item.phase}`} key={item.phase}>
+        {visibleSeries.map((item) => <g className={`user-portal-radar__series ${item.phase}`} key={item.phase}>
           <polygon points={points(item.values)} />
           {competencies.map((competency, index) => {
             const marker = point(index, item.values.get(competency.competencyId) ?? 0)

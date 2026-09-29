@@ -578,7 +578,7 @@ export type ActivityAnalysisCatalogResult = {
 export type CombinedAnalysisMode = 'comparison'
 export type CombinedAnalysisMetric = 'score' | 'growth' | 'response' | 'attendees'
 export type CombinedAnalysisSort = CombinedAnalysisMetric | 'date' | 'name'
-export type CombinedParticipantFilters = { major?: string; educationLevel?: string; studyYear?: number }
+export type CombinedParticipantFilters = { majors?: string[]; educationLevel?: string; studyYear?: number }
 export type CombinedParticipantFiltersByActivity = Record<string, CombinedParticipantFilters>
 export type CombinedAnalysisInput = {
   activityIds: number[]
@@ -597,7 +597,7 @@ export type CombinedAnalysisReport = {
   mode: CombinedAnalysisMode
   selectedActivities: Array<{ id: number; name: string }>
   participantFilters: {
-    selectedByActivity: Record<string, { major: string; educationLevel: string; studyYear: number | null }>
+    selectedByActivity: Record<string, { majors: string[]; educationLevel: string; studyYear: number | null }>
     optionsByActivity: Record<string, { majors: string[]; educationLevels: string[]; studyYears: number[] }>
   }
   summary: {
@@ -628,6 +628,7 @@ export type CombinedAnalysisReport = {
   categorySummary: Array<{ label: string; activityCount: number; averageScore: number | null }>
   organizerSummary: Array<{ label: string; activityCount: number; averageScore: number | null }>
   monthSummary: Array<{ label: string; activityCount: number; averageScore: number | null }>
+  facultyStatistics: Array<{ faculty: string; pre: DescriptiveStatistics; post: DescriptiveStatistics }>
   commonCompetencies: Array<{ code: string; name: string; activityCount: number; averageScore: number | null; preAverage: number | null; postAverage: number | null; meanDifference: number | null; minimumScore: number | null; maximumScore: number | null; answerCount: number; preCount: number; postCount: number; pairedCount: number }>
   comparison: {
     items: ActivityAnalysisCard[]

@@ -71,7 +71,7 @@ function RecentActivities({ activities, pagination, isLoading, onPageChange, onC
                 <td>
                   <div className="recent-participants">
                     <strong>{activity.participantCount}<small> / {activity.participantLimit}</small></strong>
-                    <span aria-hidden="true"><i style={{ width: `${participationPercent(activity)}%` }} /></span>
+                    <span className="admin-chart-point admin-chart-point--horizontal" tabIndex={0} aria-label={`ผู้เข้าร่วม ${activity.participantCount} จาก ${activity.participantLimit} คน คิดเป็น ${participationPercent(activity)} เปอร์เซ็นต์`} data-chart-tooltip={`${activity.participantCount} / ${activity.participantLimit} คน · ${participationPercent(activity)}%`}><i style={{ width: `${participationPercent(activity)}%` }} /></span>
                   </div>
                 </td>
                 <td><span className="recent-score recent-score--pre">{activity.preCount}</span></td>

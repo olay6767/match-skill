@@ -16,7 +16,7 @@ function TopSkillsCard({ data }: TopSkillsCardProps) {
   const visibleSkills = expanded ? ranked : ranked.slice(0, 4)
   const hiddenCount = Math.max(0, ranked.length - 4)
   return (
-    <Card as="article" className="panel skills-panel">
+    <Card as="article" className={`panel skills-panel${expanded ? ' skills-panel--expanded' : ''}`}>
       <div className="panel-heading"><div><h2>สมรรถนะเด่นหลังประเมิน</h2><p>เรียงจากคะแนน Post-test สูงสุด</p></div></div>
       <div className="skill-list">
         {visibleSkills.map((skill) => <SkillBar key={skill.id} name={skill.name} value={skill.postAverage} />)}

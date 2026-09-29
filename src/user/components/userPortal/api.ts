@@ -35,6 +35,10 @@ export function getStudentPortalProfile() {
   return request<{ profile: UserProfile }>('/me', {}, true)
 }
 
+export function completeStudentPortalOnboarding() {
+  return request<{ ok: true }>('/onboarding-complete', { method: 'POST' }, true)
+}
+
 export function getStudentPortalActivities() {
   return request<{ activities: JoinedActivity[] }>('/activities', {}, true)
 }

@@ -533,6 +533,85 @@
   min-height: 42px;
 }
 
+.ui-multi-select {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: #70492f;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.ui-multi-select details {
+  position: relative;
+}
+
+.ui-multi-select summary {
+  display: flex;
+  min-height: 42px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  border: 1px solid #e9c6a5;
+  border-radius: 10px;
+  background: #fffefc;
+  padding: 0 14px;
+  color: #4b3020;
+  list-style: none;
+}
+
+.ui-multi-select summary::-webkit-details-marker { display: none; }
+.ui-multi-select summary strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-multi-select summary i { width: 8px; height: 8px; flex: none; transform: rotate(45deg); border-right: 2px solid #e87522; border-bottom: 2px solid #e87522; transition: transform .16s ease; }
+.ui-multi-select details[open] summary { border-color: #e87522; outline: 3px solid rgba(242, 154, 87, .17); }
+.ui-multi-select details[open] summary i { transform: rotate(225deg); }
+
+.ui-multi-select__menu {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 8px);
+  left: 0;
+  width: max(100%, 260px);
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid #ead8c9;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  box-shadow: 0 14px 32px rgba(77, 45, 24, .16);
+}
+
+.ui-multi-select__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 7px 9px;
+  color: #887264;
+  font-size: 11px;
+}
+
+.comparison-score-filters__controls .ui-multi-select__menu label {
+  display: flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  border-radius: 7px;
+  padding: 9px;
+  color: #4b3020;
+  font-size: 12px;
+}
+
+.comparison-score-filters__controls .ui-multi-select__menu label:hover,
+.comparison-score-filters__controls .ui-multi-select__menu label.is-selected { background: #fff1e6; }
+.ui-multi-select__menu input { width: 16px; height: 16px; flex: none; accent-color: #e87522; }
+.ui-multi-select__menu label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-multi-select__menu p { margin: 8px; color: #8a817a; }
+
 .comparison-score-panel {
   padding: 22px;
 }
@@ -647,13 +726,41 @@
   display: block;
   height: 100%;
   border-radius: 6px;
-  background: linear-gradient(90deg, #1fa66a, #52c78e);
-  box-shadow: inset 0 -2px 0 rgba(14, 112, 69, 0.14);
+  background: linear-gradient(90deg, #747b84, #a8adb3);
+  box-shadow: inset 0 -2px 0 rgba(55, 61, 68, 0.14);
   transition: width 0.25s ease;
 }
 
 .comparison-score-track i.is-empty {
   width: 0 !important;
+}
+
+.comparison-faculty-statistics {
+  margin-top: 20px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fff;
+  padding: 24px;
+  box-shadow: 0 12px 32px rgba(79, 48, 27, .08);
+}
+
+.comparison-faculty-statistics > header { margin-bottom: 22px; }
+.comparison-faculty-statistics > header span { display: block; margin-bottom: 5px; color: #e66b17; font-size: 12px; font-weight: 900; letter-spacing: .1em; }
+.comparison-faculty-statistics > header h2 { margin: 0; color: #3f291c; font-size: 22px; }
+.comparison-faculty-statistics__table-wrap { overflow-x: auto; }
+.comparison-faculty-statistics table { width: 100%; min-width: 820px; border-collapse: separate; border-spacing: 0 10px; color: #4d3322; font-size: 13px; }
+.comparison-faculty-statistics thead th { padding: 5px 14px; color: #806650; font-size: 11px; text-align: center; }
+.comparison-faculty-statistics thead th:first-child { text-align: left; }
+.comparison-faculty-statistics thead .is-pre { color: #ca6a25; }
+.comparison-faculty-statistics thead .is-post { color: #e35f08; }
+.comparison-faculty-statistics tbody th,
+.comparison-faculty-statistics tbody td { padding: 16px 14px; background: #faf7f4; }
+.comparison-faculty-statistics tbody th { width: 32%; border-radius: 10px 0 0 10px; text-align: left; }
+.comparison-faculty-statistics tbody td { text-align: center; font-variant-numeric: tabular-nums; }
+.comparison-faculty-statistics tbody td:last-child { border-radius: 0 10px 10px 0; }
+
+@media (max-width: 620px) {
+  .comparison-faculty-statistics { padding: 17px; border-radius: 14px; }
 }
 
 .comparison-score-row > strong {

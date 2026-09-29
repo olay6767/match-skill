@@ -13,6 +13,7 @@ import type { DashboardNav } from '../layout/DashboardSidebar'
 import Button from '../../../shared/components/ui/Button'
 import Icon from '../../../shared/components/ui/Icon'
 import ScrollableSelect from '../../../shared/components/ui/ScrollableSelect'
+import MultiSelect from '../../../shared/components/ui/MultiSelect'
 import { readSelectedActivities, saveSelectedActivities, type SelectedActivity } from './activityAnalysisSelection'
 import './activityAnalysis.css'
 import './combinedAnalysisEnhancements.css'
@@ -112,7 +113,7 @@ function CombinedActivityAnalysisPage({ adminEmail, canExport, onLogout, onNavig
     setParticipantFiltersByActivity((current) => {
       const next = { ...current }
       const nextFilter = { ...next[String(activityId)], ...patch }
-      if (nextFilter.major || nextFilter.educationLevel || nextFilter.studyYear !== undefined) next[String(activityId)] = nextFilter
+      if (nextFilter.majors?.length || nextFilter.educationLevel || nextFilter.studyYear !== undefined) next[String(activityId)] = nextFilter
       else delete next[String(activityId)]
       return next
     })
@@ -179,11 +180,11 @@ function CombinedActivityAnalysisPage({ adminEmail, canExport, onLogout, onNavig
           const activityFilter = participantFiltersByActivity[String(activity.id)] ?? {}
           const options = report?.participantFilters.optionsByActivity[String(activity.id)]
           const activityResult = report?.comparison.items.find((item) => item.id === activity.id)
-          const hasFilter = Boolean(activityFilter.major || activityFilter.educationLevel || activityFilter.studyYear)
+          const hasFilter = Boolean(activityFilter.majors?.length || activityFilter.educationLevel || activityFilter.studyYear)
           return <article className="comparison-activity-filter-card" key={activity.id}>
             <div className="comparison-activity-filter-card__heading"><div><span>กิจกรรม</span><h3>{activity.name}</h3></div>{activityResult && <small>ครบคู่ {activityResult.pairedCount.toLocaleString('th-TH')} คน</small>}</div>
             <div className="comparison-score-filters__controls">
-              <ScrollableSelect label="สาขาวิชา" value={activityFilter.major ?? ''} options={[{ value: '', label: 'ทุกสาขาวิชา' }, ...(options?.majors ?? []).map((major) => ({ value: major, label: major }))]} onChange={(major) => updateParticipantFilters(activity.id, { major: major || undefined })} />
+              <MultiSelect label="สาขาวิชา" values={activityFilter.majors ?? []} options={(options?.majors ?? []).map((major) => ({ value: major, label: major }))} allLabel="ทุกสาขาวิชา" onChange={(majors) => updateParticipantFilters(activity.id, { majors: majors.length ? majors : undefined })} />
               <ScrollableSelect label="ระดับการศึกษา" value={activityFilter.educationLevel ?? ''} options={[{ value: '', label: 'ทุกระดับ' }, ...(options?.educationLevels ?? []).map((level) => ({ value: level, label: level }))]} onChange={(educationLevel) => updateParticipantFilters(activity.id, { educationLevel: educationLevel || undefined })} />
               <ScrollableSelect label="ชั้นปี / กลุ่มรุ่น" value={activityFilter.studyYear ? String(activityFilter.studyYear) : ''} options={[{ value: '', label: 'ทุกชั้นปี / กลุ่มรุ่น' }, ...(options?.studyYears ?? []).map((year) => ({ value: String(year), label: `ชั้นปี ${year}` }))]} onChange={(studyYear) => updateParticipantFilters(activity.id, { studyYear: studyYear ? Number(studyYear) : undefined })} />
               <Button disabled={!hasFilter} onClick={() => setParticipantFiltersByActivity((current) => { const next = { ...current }; delete next[String(activity.id)]; return next })}>ล้าง</Button>
@@ -201,6 +202,7 @@ function CombinedActivityAnalysisPage({ adminEmail, canExport, onLogout, onNavig
         </div>
         <ComparisonScoreChart items={report.comparison.items} metric={scoreMetric} onOpenActivity={(id) => onRouteNavigate(`/admin/analytics/activity/${id}`)} />
       </section>}
+      {!isLoading && report && <FacultyStatisticsTable rows={report.facultyStatistics} />}
     </>}
 
     {manageOpen && <div className="activity-analysis-modal-backdrop" role="presentation" onMouseDown={() => setManageOpen(false)}>
@@ -224,11 +226,31 @@ function ComparisonScoreChart({ items, metric, onOpenActivity }: { items: Activi
       const width = value === null ? 0 : Math.max(0, Math.min(100, (value / 7) * 100))
       return <div className="comparison-score-row" key={item.id}>
         <button type="button" title={`เปิดผลวิเคราะห์ ${item.name}`} onClick={() => onOpenActivity(item.id)}>{item.name}</button>
-        <div className="comparison-score-track" title={`${item.name}: ${scoreMetricLabel[metric]} ${displayScore(value)}`}><i className={value === null ? 'is-empty' : ''} style={{ width: `${width}%` }} /></div>
+        <div className={`comparison-score-track${value === null ? '' : ' admin-chart-point admin-chart-point--horizontal'}`} tabIndex={value === null ? undefined : 0} aria-label={value === null ? undefined : `${item.name} ${scoreMetricLabel[metric]} ${displayScore(value)} จาก 7`} data-chart-tooltip={value === null ? undefined : `${scoreMetricLabel[metric]} ${displayScore(value)} / 7`} title={`${item.name}: ${scoreMetricLabel[metric]} ${displayScore(value)}`}><i className={value === null ? 'is-empty' : ''} style={{ width: `${width}%` }} /></div>
         <strong>{displayScore(value)}</strong>
       </div>
     })}</div>
   </div>
+}
+
+function FacultyStatisticsTable({ rows }: { rows: CombinedAnalysisReport['facultyStatistics'] }) {
+  const value = (score: number | null) => score === null ? '—' : score.toFixed(2)
+  return <section className="comparison-faculty-statistics">
+    <header><span>STATISTICS</span><h2>สถิติรายคณะ</h2></header>
+    {rows.length ? <div className="comparison-faculty-statistics__table-wrap">
+      <table>
+        <thead>
+          <tr><th rowSpan={2}>คณะ</th><th className="is-pre" colSpan={4}>Pre-test</th><th className="is-post" colSpan={4}>Post-test</th></tr>
+          <tr><th>Mean</th><th>Max</th><th>Min</th><th>SD</th><th>Mean</th><th>Max</th><th>Min</th><th>SD</th></tr>
+        </thead>
+        <tbody>{rows.map((row) => <tr key={row.faculty}>
+          <th scope="row">{row.faculty}</th>
+          <td>{value(row.pre.mean)}</td><td>{value(row.pre.maximum)}</td><td>{value(row.pre.minimum)}</td><td>{value(row.pre.sd)}</td>
+          <td>{value(row.post.mean)}</td><td>{value(row.post.maximum)}</td><td>{value(row.post.minimum)}</td><td>{value(row.post.sd)}</td>
+        </tr>)}</tbody>
+      </table>
+    </div> : <div className="comparison-score-empty"><strong>ยังไม่มีข้อมูลสถิติรายคณะ</strong><span>ลองเปลี่ยนตัวกรองกลุ่มนักศึกษา</span></div>}
+  </section>
 }
 
 export default CombinedActivityAnalysisPage

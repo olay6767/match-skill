@@ -115,6 +115,7 @@ function Dashboard({ adminEmail, onLogout, onOpenCreateActivity, onNavigate, onS
       <DashboardFilters value={filters} activities={activityOptions} onChange={handleFiltersChange} />
       {isLoading ? <div className="dashboard-loading" role="status">กำลังโหลดข้อมูล Dashboard...</div> : <>
         <SummaryCards summary={summary} />
+        <AnalyticsPanels data={competencies} />
         <RecentActivities
           activities={visibleActivities}
           pagination={recentPagination}
@@ -122,7 +123,6 @@ function Dashboard({ adminEmail, onLogout, onOpenCreateActivity, onNavigate, onS
           onPageChange={handleRecentPageChange}
           onCreate={onOpenCreateActivity}
         />
-        <AnalyticsPanels data={competencies} />
       </>}
     </DashboardLayout>
   )

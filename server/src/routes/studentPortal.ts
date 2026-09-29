@@ -189,14 +189,18 @@ studentPortalRouter.post('/login', async (request, response) => {
   const rateLimitKey = `${request.ip ?? 'unknown'}:${input.studentCode}`
   enforceLoginRateLimit(rateLimitKey)
   ensureDatabaseAvailable()
-  const rows = await pool.query<Array<{ id: number | string }>>('SELECT id FROM students WHERE student_code = ? LIMIT 1', [input.studentCode])
+  const rows = await pool.query<Array<{ id: number | string; portal_onboarding_completed_at: Date | string | null }>>('SELECT id, portal_onboarding_completed_at FROM students WHERE student_code = ? LIMIT 1', [input.studentCode])
   const student = rows[0]
   if (!student) {
     recordLoginFailure(rateLimitKey)
     throw new ApiError(401, 'ไม่พบรหัสนักศึกษา')
   }
   loginRateBuckets.delete(rateLimitKey)
-  response.json(await createStudentSession(Number(student.id)))
+  response.json({
+    ...(await createStudentSession(Number(student.id))),
+    studentCode: input.studentCode,
+    onboardingCompleted: Boolean(student.portal_onboarding_completed_at),
+  })
 })
 
 studentPortalRouter.use(async (request, response, next) => {
@@ -215,6 +219,14 @@ studentPortalRouter.get('/me', async (_request, response) => {
   const student = rows[0]
   if (!student) throw new ApiError(404, 'ไม่พบข้อมูลนักศึกษา')
   response.json({ profile: { studentCode: student.student_code, firstName: student.first_name ?? '', lastName: student.last_name ?? '', email: student.email, faculty: student.faculty, major: student.major, educationLevel: student.education_level, studyYear: student.study_year === null ? null : Number(student.study_year), phone: student.phone } })
+})
+
+studentPortalRouter.post('/onboarding-complete', async (_request, response) => {
+  await pool.query(
+    'UPDATE students SET portal_onboarding_completed_at = COALESCE(portal_onboarding_completed_at, NOW()) WHERE id = ?',
+    [response.locals.studentId],
+  )
+  response.json({ ok: true })
 })
 
 studentPortalRouter.get('/activities', async (_request, response) => {

@@ -9,7 +9,7 @@ function SkillBar({ name, value }: SkillBarProps) {
   return (
     <div className="skill-row">
       <div><span>{name}</span><strong>{scoreLabel} / 7</strong></div>
-      <span className="skill-track" aria-label={`${name} ${scoreLabel} จาก 7`}><span style={{ width: `${normalizedValue === null ? 0 : (normalizedValue / 7) * 100}%` }} /></span>
+      <span className={`skill-track${normalizedValue === null ? '' : ' admin-chart-point admin-chart-point--horizontal'}`} tabIndex={normalizedValue === null ? undefined : 0} data-chart-tooltip={normalizedValue === null ? undefined : `${scoreLabel} / 7`} aria-label={`${name} ${scoreLabel} จาก 7`}><span style={{ width: `${normalizedValue === null ? 0 : (normalizedValue / 7) * 100}%` }} /></span>
     </div>
   )
 }

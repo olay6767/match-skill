@@ -113,22 +113,11 @@ const activitySelect = `
     a.post_test_enabled,
     a.participant_limit,
     a.status,
-    (
-      SELECT COUNT(DISTINCT sr.student_id)
-      FROM survey_responses sr
-      WHERE sr.activity_id = a.id
-    ) AS participant_count,
-    (
-      SELECT COUNT(*)
-      FROM survey_responses sr
-      WHERE sr.activity_id = a.id AND sr.phase = 'pre'
-    ) AS pre_response_count,
-    (
-      SELECT COUNT(*)
-      FROM survey_responses sr
-      WHERE sr.activity_id = a.id AND sr.phase = 'post'
-    ) AS post_response_count
+    COUNT(DISTINCT sr.student_id) AS participant_count,
+    COUNT(DISTINCT CASE WHEN sr.phase = 'pre' THEN sr.id END) AS pre_response_count,
+    COUNT(DISTINCT CASE WHEN sr.phase = 'post' THEN sr.id END) AS post_response_count
   FROM activities a
+  LEFT JOIN survey_responses sr ON sr.activity_id = a.id
 `
 
 const activityStyles: Record<ActivityRow['status'], { tone: string; icon: string }> = {
@@ -205,7 +194,12 @@ function serializeActivity(row: ActivityRow) {
 async function findActivity(id: number) {
   const rows = await pool.query<ActivityRow[]>(
     `${activitySelect}
-     WHERE a.id = ?`,
+     WHERE a.id = ?
+     GROUP BY a.id, a.created_at, a.code, a.name, a.detail, a.cover_image_data, a.assessment_image_data, a.form_theme_json, a.location, a.start_date, a.end_date,
+       a.pre_open_at, a.pre_close_at, a.post_open_at, a.post_close_at, a.survey_template_id, a.activity_date, a.start_time, a.end_time,
+       a.target_group, a.pre_test_duration_minutes, a.post_test_duration_minutes, a.pre_test_enabled, a.post_test_enabled,
+       a.participant_limit,
+       a.status`,
     [id],
   )
   return rows[0] ? serializeActivity(rows[0]) : null
@@ -278,6 +272,11 @@ activitiesRouter.get('/', async (request, response) => {
   const rows = await pool.query<ActivityRow[]>(
     `${activitySelect}
      ${where}
+     GROUP BY a.id, a.created_at, a.code, a.name, a.detail, a.cover_image_data, a.assessment_image_data, a.form_theme_json, a.location, a.start_date, a.end_date,
+       a.pre_open_at, a.pre_close_at, a.post_open_at, a.post_close_at, a.survey_template_id, a.activity_date, a.start_time, a.end_time,
+       a.target_group, a.pre_test_duration_minutes, a.post_test_duration_minutes, a.pre_test_enabled, a.post_test_enabled,
+       a.participant_limit,
+       a.status
      ORDER BY a.created_at DESC, a.id DESC LIMIT ? OFFSET ?`,
     [...values, query.pageSize, (page - 1) * query.pageSize],
   )

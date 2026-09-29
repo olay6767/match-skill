@@ -1,6 +1,8 @@
 export type StudentPortalSession = {
   historySession: string
   expiresAt: string
+  studentCode?: string
+  onboardingCompleted?: boolean
 }
 
 export type UserProfile = {
