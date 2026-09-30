@@ -9549,7 +9549,8 @@
   text-align: center;
 }
 
-@media (min-width: 761px) and (max-width: 1100px) {
+@media (min-width: 761px) and (max-width: 1100px),
+  (min-width: 761px) and (hover: none) and (pointer: coarse) {
   .user-progress-timeline .user-progress-activity-filter__backdrop {
     position: fixed;
     inset: 0;
@@ -9580,12 +9581,14 @@
     transform: translate(-50%, -50%);
     border-radius: 20px;
     box-shadow: 0 20px 56px rgba(42, 28, 19, .22);
+    overscroll-behavior: contain;
   }
 
   .user-progress-activity-filter__menu > div {
     min-height: 0;
     max-height: none;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 }
 
