@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react"
 import Button from "../../shared/components/ui/Button"
-import adminCover from "../../assets/8.png"
+import adminCover from "../../assets/29.png"
 import "../styles/App.css"
 import "./adminLogin.css"
 
@@ -95,7 +95,7 @@ function AdminLogin({ onLogin }: AdminLoginProps) {
         </span>
 
         <section className="admin-login-panel" aria-labelledby="admin-login-title">
-          <div className="admin-login-sut-logo" role="img" aria-label="SEDA" />
+          <div className="admin-login-sut-logo" role="img" aria-label="SUT 36th Anniversary" />
 
           <header className="admin-login-header">
             <h1 id="admin-login-title">Welcome back</h1>

@@ -40,13 +40,13 @@
   bottom: 0;
   left: 0;
   display: block;
-  width: 100%;
+  width: 160%;
   height: 100%;
   max-width: none;
   max-height: none;
   border: 0;
   object-fit: cover;
-  object-position: center;
+  object-position: left center;
 }
 
 .admin-login-panel {
@@ -75,7 +75,7 @@
   z-index: 0;
   width: 310px;
   aspect-ratio: 1452 / 1066;
-  background: url("../../assets/10.png") center / contain no-repeat;
+  background: url("../../assets/27.png") center / contain no-repeat;
   opacity: .14;
   content: "";
   pointer-events: none;
@@ -91,10 +91,10 @@
   aspect-ratio: 3.1 / 1;
   align-self: center;
   margin-bottom: 30px;
-  background-image: url("../../assets/93.png");
+  background-image: url("../../assets/29.png");
   background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
+  background-position: 85% 13%;
+  background-size: 430% 625%;
 }
 
 .admin-login-header { text-align: center; }
