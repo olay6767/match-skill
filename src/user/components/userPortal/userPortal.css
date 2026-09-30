@@ -9461,3 +9461,219 @@
     animation: none;
   }
 }
+
+
+/* Make the progress filters comfortable on touch screens and keep the
+   activity picker inside tablet viewports. */
+.user-progress-timeline .user-progress-activity-filter__trigger {
+  min-height: 50px;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+.user-progress-activity-filter__menu {
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  border: 1px solid #efe6df;
+  border-radius: 16px;
+}
+
+.user-progress-activity-filter__menu > header {
+  padding: 18px 20px 16px;
+}
+
+.user-progress-activity-filter__menu > header strong {
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.user-progress-activity-filter__menu > header small {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.user-progress-activity-filter__menu > div {
+  gap: 7px;
+  max-height: min(52dvh, 420px);
+  padding: 10px;
+}
+
+.user-progress-timeline .user-progress-activity-filter__menu > div > button {
+  min-height: 60px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 12px;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.user-progress-activity-filter__menu > div > button > i {
+  width: 25px;
+  height: 25px;
+  border: 1px solid #e4d9d0;
+  border-radius: 7px;
+}
+
+.user-progress-activity-filter__menu > div > button b {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.4;
+  text-overflow: clip;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.user-progress-activity-filter__menu > div > button small {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.user-progress-activity-filter__menu > footer {
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.user-progress-timeline .user-progress-activity-filter__menu > footer button {
+  min-height: 44px;
+  border-radius: 10px;
+  padding: 8px 13px;
+  font-size: 12px;
+}
+
+.user-progress-activity-filter__menu > footer small {
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .user-progress-timeline .user-progress-activity-filter__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: rgba(43, 31, 24, .38);
+    padding: 0;
+    box-shadow: none;
+    backdrop-filter: blur(2px);
+  }
+
+  .user-progress-activity-filter__menu {
+    position: fixed;
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    z-index: 100;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    width: min(540px, calc(100vw - 40px));
+    max-width: calc(100vw - 40px);
+    max-height: min(82dvh, 680px);
+    transform: translate(-50%, -50%);
+    border-radius: 20px;
+    box-shadow: 0 20px 56px rgba(42, 28, 19, .22);
+  }
+
+  .user-progress-activity-filter__menu > div {
+    min-height: 0;
+    max-height: none;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 760px) {
+  .user-progress-timeline .user-progress-trend-filter button,
+  .user-progress-timeline .user-progress-activity-filter__trigger {
+    min-height: 52px;
+    font-size: 13px;
+  }
+
+  .user-progress-timeline .user-progress-activity-filter__trigger {
+    justify-content: flex-start;
+    gap: 11px;
+    border-radius: 12px;
+    padding-inline: 15px;
+  }
+
+  .user-progress-activity-filter__trigger > span {
+    flex: 1;
+    text-align: left;
+  }
+
+  .user-progress-activity-filter__menu {
+    width: 100%;
+    max-width: 100%;
+    max-height: min(82dvh, 680px);
+    border-radius: 22px 22px 0 0;
+  }
+
+  .user-progress-activity-filter__menu > header {
+    min-height: 86px;
+    padding: 29px 20px 16px;
+  }
+
+  .user-progress-timeline .user-progress-activity-filter__menu > div > button {
+    min-height: 68px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    border-radius: 13px;
+    padding: 11px 13px;
+  }
+
+  .user-progress-activity-filter__menu > div > button b {
+    font-size: 14px;
+  }
+
+  .user-progress-activity-filter__menu > footer {
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .user-progress-timeline .user-progress-activity-filter__menu > footer button {
+    min-height: 48px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 420px) {
+  .user-progress-activity-filter__menu > footer {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    padding-inline: 12px;
+  }
+
+  .user-progress-activity-filter__menu > footer small {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    font-size: 11px;
+  }
+
+  .user-progress-timeline .user-progress-activity-filter__menu > footer button:first-child {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .user-progress-timeline .user-progress-activity-filter__menu > footer button.is-done {
+    grid-row: 2;
+    grid-column: 2;
+  }
+
+  .user-progress-timeline .user-progress-activity-filter__menu > footer button {
+    width: 100%;
+    justify-self: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-progress-timeline .user-progress-activity-filter__trigger,
+  .user-progress-activity-filter__menu {
+    animation: none;
+    transition: none;
+  }
+}
