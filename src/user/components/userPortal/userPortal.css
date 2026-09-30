@@ -6498,7 +6498,9 @@
   box-shadow: 7px 0 24px rgba(72, 47, 31, .07);
 }
 
-.user-portal-sidebar::before {
+.user-portal-sidebar::before { display: none; }
+
+.user-portal-main::after {
   position: absolute;
   right: -230px;
   bottom: -135px;
@@ -6507,19 +6509,17 @@
   aspect-ratio: 1;
   background: url("../../../assets/10.png") center / contain no-repeat;
   opacity: .18;
-  content: "";
   pointer-events: none;
   transform-origin: center;
   will-change: transform;
   animation: user-portal-sidebar-wheel-spin 24s linear infinite;
+  content: "";
 }
 
 .user-portal-sidebar > * {
   position: relative;
   z-index: 1;
 }
-
-.user-portal-main::after { display: none; }
 
 @keyframes user-portal-sidebar-wheel-spin {
   to { transform: rotate(1turn); }
@@ -6661,16 +6661,11 @@
     box-shadow: 10px 0 32px rgba(55, 37, 26, .16);
   }
 
-  .user-portal-sidebar::before {
-    right: -245px;
-    bottom: -105px;
-    width: 500px;
-    opacity: .2;
-  }
+  .user-portal-main::after { right: -245px; bottom: -105px; width: 500px; opacity: .2; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .user-portal-sidebar::before { animation: none; }
+  .user-portal-main::after { animation: none; }
 }
 
 @media (max-width: 560px) {
