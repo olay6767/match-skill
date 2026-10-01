@@ -189,12 +189,21 @@ function isSessionError(error: unknown) {
   return error instanceof StudentPortalApiError && error.status === 401
 }
 
+type MobileNavPage = 'activities' | 'progress' | 'profile'
+const mobileNavPosition: Record<MobileNavPage, string> = {
+  activities: '16.67%',
+  progress: '50%',
+  profile: '83.33%',
+}
+let previousMobileNavPage: MobileNavPage | null = null
+
 function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: PortalPageProps & { title: string; titleEn: string; eyebrow: string; active: 'activities' | 'progress' | 'profile'; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
   const [guideStep, setGuideStep] = useState(0)
   const languageRef = useRef<HTMLDivElement>(null)
+  const mobileNavRef = useRef<HTMLElement>(null)
   const { language, setLanguage, t } = usePortalLanguage()
   const onboardingStorageKey = useMemo(() => {
     const studentCode = getStudentPortalSession()?.studentCode
@@ -254,6 +263,67 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
       document.removeEventListener('keydown', closeOnEscape)
     }
   }, [guideOpen, rememberGuideCompletion])
+
+  useEffect(() => {
+    const nav = mobileNavRef.current
+    if (!nav) return
+
+    const mobileScreen = window.matchMedia('(max-width: 760px)')
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let lastScrollY = window.scrollY
+    let pendingDelta = 0
+    let frame = 0
+    let settleTimer = 0
+
+    const onScroll = () => {
+      const scrollY = window.scrollY
+      const delta = scrollY - lastScrollY
+      lastScrollY = scrollY
+      if (!mobileScreen.matches || reducedMotion.matches || Math.abs(delta) < .5) return
+
+      pendingDelta += delta
+      if (!frame) frame = window.requestAnimationFrame(() => {
+        const force = Math.min(Math.abs(pendingDelta), 65) / 65
+        const direction = Math.sign(pendingDelta)
+        nav.style.setProperty('--liquid-drift', `${Math.round(direction * force * 24)}px`)
+        nav.style.setProperty('--liquid-stretch', `${(1 + force * .24).toFixed(2)}`)
+        nav.style.setProperty('--liquid-tilt', `${Math.round(direction * force * 10)}deg`)
+        nav.style.setProperty('--liquid-rise', `${Math.round(-force * 7)}px`)
+        nav.classList.add('is-scrolling')
+        pendingDelta = 0
+        frame = 0
+      })
+
+      window.clearTimeout(settleTimer)
+      settleTimer = window.setTimeout(() => {
+        nav.classList.remove('is-scrolling')
+        nav.style.removeProperty('--liquid-drift')
+        nav.style.removeProperty('--liquid-stretch')
+        nav.style.removeProperty('--liquid-tilt')
+        nav.style.removeProperty('--liquid-rise')
+      }, 180)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(settleTimer)
+    }
+  }, [])
+
+  useEffect(() => {
+    const previous = previousMobileNavPage
+    previousMobileNavPage = active
+    const nav = mobileNavRef.current
+    if (!nav || !previous || previous === active || !window.matchMedia('(max-width: 760px)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    nav.style.setProperty('--liquid-from', mobileNavPosition[previous])
+    nav.style.setProperty('--liquid-to', mobileNavPosition[active])
+    nav.classList.add('is-switching')
+    const timer = window.setTimeout(() => nav.classList.remove('is-switching'), 700)
+    return () => window.clearTimeout(timer)
+  }, [active])
 
   const copy = {
     activities: t('กิจกรรมของฉัน', 'My Activities'),
@@ -354,7 +424,8 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
       </header>
       <div className="user-portal-content">{children}</div>
     </main>
-    <nav className={`user-portal-mobile-nav is-${active}`} aria-label={t('เมนูหลัก', 'Main navigation')}>
+    <nav ref={mobileNavRef} className={`user-portal-mobile-nav is-${active}`} aria-label={t('เมนูหลัก', 'Main navigation')}>
+      <span className="user-portal-mobile-nav__liquid" aria-hidden="true" />
       <button type="button" className={active === 'activities' ? 'is-active' : ''} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={activitiesNavIcon} alt="" /></span><span>{copy.activities}</span></button>
       <button type="button" className={active === 'progress' ? 'is-active' : ''} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={progressNavIcon} alt="" /></span><span>{copy.progress}</span></button>
       <button type="button" className={active === 'profile' ? 'is-active' : ''} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={profileNavIcon} alt="" /></span><span>{copy.profile}</span></button>
