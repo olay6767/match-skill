@@ -286,9 +286,9 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
         const force = Math.min(Math.abs(pendingDelta), 65) / 65
         const direction = Math.sign(pendingDelta)
         nav.style.setProperty('--liquid-drift', `${Math.round(direction * force * 24)}px`)
-        nav.style.setProperty('--liquid-stretch', `${(1 + force * .24).toFixed(2)}`)
+        nav.style.setProperty('--liquid-stretch', `${(1 + force * .14).toFixed(2)}`)
         nav.style.setProperty('--liquid-tilt', `${Math.round(direction * force * 10)}deg`)
-        nav.style.setProperty('--liquid-rise', `${Math.round(-force * 7)}px`)
+        nav.style.setProperty('--liquid-rise', `${Math.round(-force * 5)}px`)
         nav.classList.add('is-scrolling')
         pendingDelta = 0
         frame = 0

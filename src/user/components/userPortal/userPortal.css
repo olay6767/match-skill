@@ -7244,11 +7244,11 @@
 
   .user-portal-mobile-nav__liquid {
     position: absolute;
-    top: -15px;
+    top: -7px;
     left: calc(50% + var(--liquid-drift, 0px));
     z-index: 0;
-    width: clamp(105px, 37%, 150px);
-    height: 112px;
+    width: clamp(90px, 30%, 115px);
+    height: 96px;
     border-radius: 48% 52% 46% 54% / 55% 43% 57% 45%;
     background: radial-gradient(ellipse at 41% 29%, rgba(255, 255, 255, .52), rgba(255, 255, 255, .06) 52%, rgba(31, 26, 34, .08) 78%, transparent);
     box-shadow: inset 4px 5px 12px rgba(255, 255, 255, .87), inset -8px -9px 15px rgba(30, 26, 38, .21), 0 4px 13px rgba(53, 41, 55, .15);
@@ -7265,15 +7265,15 @@
     inset: -3px;
     border-radius: inherit;
     background: conic-gradient(from 20deg, rgba(255, 255, 255, .95), rgba(83, 220, 255, .88), rgba(111, 78, 232, .8), rgba(255, 127, 214, .83), rgba(255, 243, 158, .92), rgba(35, 41, 58, .7), rgba(255, 255, 255, .95));
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 7px), transparent 100%);
-    mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 7px), transparent 100%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 5px), transparent 100%);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 5px), transparent 100%);
     filter: blur(1px);
     content: '';
   }
 
   .user-portal-mobile-nav__liquid::after {
     position: absolute;
-    inset: 8px 15px 46px 15px;
+    inset: 7px 12px 38px 12px;
     border-radius: 50%;
     background: radial-gradient(ellipse at center, rgba(255, 255, 255, .68), transparent 75%);
     content: '';
@@ -7389,7 +7389,7 @@
   @keyframes user-portal-liquid-travel {
     from { left: var(--liquid-from); opacity: 0; transform: translateX(-50%) scale(.78); }
     22% { opacity: .92; }
-    60% { opacity: .98; transform: translateX(-50%) scaleX(1.26) scaleY(.88); }
+    60% { opacity: .98; transform: translateX(-50%) scaleX(1.16) scaleY(.92); }
     to { left: var(--liquid-to); opacity: 0; transform: translateX(-50%) scale(1); }
   }
 
