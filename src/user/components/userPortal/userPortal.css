@@ -7223,9 +7223,9 @@
     animation: user-portal-nav-arrive .5s cubic-bezier(.2, .8, .2, 1) both;
   }
 
-  .user-portal-mobile-nav.is-activities { --nav-active-index: 0; }
-  .user-portal-mobile-nav.is-progress { --nav-active-index: 1; }
-  .user-portal-mobile-nav.is-profile { --nav-active-index: 2; }
+  .user-portal-mobile-nav.is-activities { --nav-active-index: 0; --liquid-home: 16.67%; }
+  .user-portal-mobile-nav.is-progress { --nav-active-index: 1; --liquid-home: 50%; }
+  .user-portal-mobile-nav.is-profile { --nav-active-index: 2; --liquid-home: 83.33%; }
 
   .user-portal-mobile-nav::before {
     position: absolute;
@@ -7244,39 +7244,21 @@
 
   .user-portal-mobile-nav__liquid {
     position: absolute;
-    top: -7px;
-    left: calc(50% + var(--liquid-drift, 0px));
+    top: 11px;
+    left: calc(var(--liquid-home) + var(--liquid-drift, 0px));
     z-index: 0;
-    width: clamp(90px, 30%, 115px);
-    height: 96px;
-    border-radius: 48% 52% 46% 54% / 55% 43% 57% 45%;
-    background: radial-gradient(ellipse at 41% 29%, rgba(255, 255, 255, .52), rgba(255, 255, 255, .06) 52%, rgba(31, 26, 34, .08) 78%, transparent);
-    box-shadow: inset 4px 5px 12px rgba(255, 255, 255, .87), inset -8px -9px 15px rgba(30, 26, 38, .21), 0 4px 13px rgba(53, 41, 55, .15);
-    -webkit-backdrop-filter: blur(4px) saturate(185%) contrast(1.08);
-    backdrop-filter: blur(4px) saturate(185%) contrast(1.08);
-    opacity: 0;
-    transform: translateX(-50%) translateY(var(--liquid-rise, 0px)) rotate(var(--liquid-tilt, 0deg)) scaleX(var(--liquid-stretch, 1));
-    transition: opacity .42s ease, left .18s ease-out, transform .2s ease-out;
-    pointer-events: none;
-  }
-
-  .user-portal-mobile-nav__liquid::before {
-    position: absolute;
-    inset: -3px;
-    border-radius: inherit;
-    background: conic-gradient(from 20deg, rgba(255, 255, 255, .95), rgba(83, 220, 255, .88), rgba(111, 78, 232, .8), rgba(255, 127, 214, .83), rgba(255, 243, 158, .92), rgba(35, 41, 58, .7), rgba(255, 255, 255, .95));
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 5px), transparent 100%);
-    mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 5px), transparent 100%);
-    filter: blur(1px);
-    content: '';
-  }
-
-  .user-portal-mobile-nav__liquid::after {
-    position: absolute;
-    inset: 7px 12px 38px 12px;
+    width: 48px;
+    height: 48px;
+    border: 1px solid rgba(255, 255, 255, .88);
     border-radius: 50%;
-    background: radial-gradient(ellipse at center, rgba(255, 255, 255, .68), transparent 75%);
-    content: '';
+    background: radial-gradient(circle at 34% 24%, rgba(255, 255, 255, .62), rgba(255, 255, 255, .12) 65%, rgba(255, 255, 255, .26));
+    box-shadow: inset 1px 2px 4px rgba(255, 255, 255, .92), inset -2px -3px 5px rgba(92, 87, 84, .1), 0 3px 9px rgba(55, 47, 42, .12);
+    -webkit-backdrop-filter: blur(6px) saturate(110%);
+    backdrop-filter: blur(6px) saturate(110%);
+    opacity: 0;
+    transform: translateX(-50%);
+    transition: opacity .32s ease, left .22s ease-out;
+    pointer-events: none;
   }
 
   .user-portal-mobile-nav.is-switching .user-portal-mobile-nav__liquid {
@@ -7284,13 +7266,8 @@
   }
 
   .user-portal-mobile-nav.is-scrolling .user-portal-mobile-nav__liquid {
-    opacity: .92;
+    opacity: .88;
     animation: none;
-  }
-
-  .user-portal-mobile-nav.is-switching .user-portal-mobile-nav__liquid::before,
-  .user-portal-mobile-nav.is-scrolling .user-portal-mobile-nav__liquid::before {
-    animation: user-portal-liquid-shimmer 2.8s linear infinite;
   }
 
   .user-portal-mobile-nav button {
@@ -7382,15 +7359,10 @@
     to { transform: translateY(-1px) scale(1.06); }
   }
 
-  @keyframes user-portal-liquid-shimmer {
-    to { transform: rotate(360deg); }
-  }
-
   @keyframes user-portal-liquid-travel {
-    from { left: var(--liquid-from); opacity: 0; transform: translateX(-50%) scale(.78); }
-    22% { opacity: .92; }
-    60% { opacity: .98; transform: translateX(-50%) scaleX(1.16) scaleY(.92); }
-    to { left: var(--liquid-to); opacity: 0; transform: translateX(-50%) scale(1); }
+    from { left: var(--liquid-from); opacity: 0; }
+    20%, 80% { opacity: .88; }
+    to { left: var(--liquid-to); opacity: 0; }
   }
 
   @supports not (backdrop-filter: blur(1px)) {

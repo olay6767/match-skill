@@ -285,10 +285,7 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
       if (!frame) frame = window.requestAnimationFrame(() => {
         const force = Math.min(Math.abs(pendingDelta), 65) / 65
         const direction = Math.sign(pendingDelta)
-        nav.style.setProperty('--liquid-drift', `${Math.round(direction * force * 24)}px`)
-        nav.style.setProperty('--liquid-stretch', `${(1 + force * .14).toFixed(2)}`)
-        nav.style.setProperty('--liquid-tilt', `${Math.round(direction * force * 10)}deg`)
-        nav.style.setProperty('--liquid-rise', `${Math.round(-force * 5)}px`)
+        nav.style.setProperty('--liquid-drift', `${Math.round(direction * force * 18)}px`)
         nav.classList.add('is-scrolling')
         pendingDelta = 0
         frame = 0
@@ -298,9 +295,6 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
       settleTimer = window.setTimeout(() => {
         nav.classList.remove('is-scrolling')
         nav.style.removeProperty('--liquid-drift')
-        nav.style.removeProperty('--liquid-stretch')
-        nav.style.removeProperty('--liquid-tilt')
-        nav.style.removeProperty('--liquid-rise')
       }, 180)
     }
 
