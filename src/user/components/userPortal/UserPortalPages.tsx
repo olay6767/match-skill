@@ -354,7 +354,7 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
       </header>
       <div className="user-portal-content">{children}</div>
     </main>
-    <nav className="user-portal-mobile-nav" aria-label={t('เมนูหลัก', 'Main navigation')}>
+    <nav className={`user-portal-mobile-nav is-${active}`} aria-label={t('เมนูหลัก', 'Main navigation')}>
       <button type="button" className={active === 'activities' ? 'is-active' : ''} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={activitiesNavIcon} alt="" /></span><span>{copy.activities}</span></button>
       <button type="button" className={active === 'progress' ? 'is-active' : ''} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={progressNavIcon} alt="" /></span><span>{copy.progress}</span></button>
       <button type="button" className={active === 'profile' ? 'is-active' : ''} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={profileNavIcon} alt="" /></span><span>{copy.profile}</span></button>
