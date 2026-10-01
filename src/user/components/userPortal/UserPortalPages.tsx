@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { StudentPortalApiError, completeStudentPortalOnboarding, getStudentPortalActivities, getStudentPortalActivity, getStudentPortalProfile, getStudentPortalProgress, loginStudentPortal } from './api'
 import { isValidStudentCode, normalizeStudentCode } from '../../../lib/studentCode'
 import { clearStudentPortalSession, getStudentPortalSession, saveStudentPortalSession } from './session'
@@ -190,10 +190,10 @@ function isSessionError(error: unknown) {
 }
 
 type MobileNavPage = 'activities' | 'progress' | 'profile'
-const mobileNavPosition: Record<MobileNavPage, string> = {
-  activities: '16.67%',
-  progress: '50%',
-  profile: '83.33%',
+const mobileNavOffset: Record<MobileNavPage, string> = {
+  activities: '0%',
+  progress: '100%',
+  profile: '200%',
 }
 let previousMobileNavPage: MobileNavPage | null = null
 
@@ -306,14 +306,13 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
     }
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previous = previousMobileNavPage
     previousMobileNavPage = active
     const nav = mobileNavRef.current
     if (!nav || !previous || previous === active || !window.matchMedia('(max-width: 760px)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
-    nav.style.setProperty('--liquid-from', mobileNavPosition[previous])
-    nav.style.setProperty('--liquid-to', mobileNavPosition[active])
+    nav.style.setProperty('--nav-from-offset', mobileNavOffset[previous])
     nav.classList.add('is-switching')
     const timer = window.setTimeout(() => nav.classList.remove('is-switching'), 700)
     return () => window.clearTimeout(timer)
@@ -419,7 +418,6 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
       <div className="user-portal-content">{children}</div>
     </main>
     <nav ref={mobileNavRef} className={`user-portal-mobile-nav is-${active}`} aria-label={t('เมนูหลัก', 'Main navigation')}>
-      <span className="user-portal-mobile-nav__liquid" aria-hidden="true" />
       <button type="button" className={active === 'activities' ? 'is-active' : ''} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={activitiesNavIcon} alt="" /></span><span>{copy.activities}</span></button>
       <button type="button" className={active === 'progress' ? 'is-active' : ''} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={progressNavIcon} alt="" /></span><span>{copy.progress}</span></button>
       <button type="button" className={active === 'profile' ? 'is-active' : ''} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={profileNavIcon} alt="" /></span><span>{copy.profile}</span></button>
