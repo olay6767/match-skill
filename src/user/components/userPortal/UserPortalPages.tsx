@@ -199,9 +199,9 @@ const mobileNavLeft: Record<PortalNavPage, string> = {
   profile: 'calc(66.666667% + 5px)',
 }
 const sidebarNavTop: Record<PortalNavPage, string> = {
-  activities: '0px',
-  progress: '74px',
-  profile: '148px',
+  activities: '5px',
+  progress: '79px',
+  profile: '153px',
 }
 let previousMobileNavPage: PortalNavPage | null = null
 let previousMobileNavLeft: string | null = null
