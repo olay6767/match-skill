@@ -192,14 +192,21 @@ function isSessionError(error: unknown) {
   return error instanceof StudentPortalApiError && error.status === 401
 }
 
-type MobileNavPage = 'activities' | 'progress' | 'profile'
-const mobileNavLeft: Record<MobileNavPage, string> = {
+type PortalNavPage = 'activities' | 'progress' | 'profile'
+const mobileNavLeft: Record<PortalNavPage, string> = {
   activities: '13px',
   progress: 'calc(33.333333% + 9px)',
   profile: 'calc(66.666667% + 5px)',
 }
-let previousMobileNavPage: MobileNavPage | null = null
+const sidebarNavTop: Record<PortalNavPage, string> = {
+  activities: '0px',
+  progress: '74px',
+  profile: '148px',
+}
+let previousMobileNavPage: PortalNavPage | null = null
 let previousMobileNavLeft: string | null = null
+let previousSidebarNavPage: PortalNavPage | null = null
+let previousSidebarNavTop: string | null = null
 
 function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: PortalPageProps & { title: string; titleEn: string; eyebrow: string; active: 'activities' | 'progress' | 'profile'; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -208,6 +215,7 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
   const [guideStep, setGuideStep] = useState(0)
   const languageRef = useRef<HTMLDivElement>(null)
   const mobileNavIndicatorRef = useRef<HTMLSpanElement>(null)
+  const sidebarNavIndicatorRef = useRef<HTMLSpanElement>(null)
   const { language, setLanguage, t } = usePortalLanguage()
   const onboardingStorageKey = useMemo(() => {
     const studentCode = getStudentPortalSession()?.studentCode
@@ -294,6 +302,32 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
     }
   }, [active])
 
+  useLayoutEffect(() => {
+    const previous = previousSidebarNavPage
+    previousSidebarNavPage = active
+    const indicator = sidebarNavIndicatorRef.current
+    if (!indicator) return
+
+    let startFrame = 0
+    let slideFrame = 0
+    if (previous && previous !== active && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      indicator.style.transition = 'none'
+      indicator.style.top = previousSidebarNavTop ?? sidebarNavTop[previous]
+      startFrame = window.requestAnimationFrame(() => {
+        slideFrame = window.requestAnimationFrame(() => {
+          indicator.style.transition = ''
+          indicator.style.top = ''
+        })
+      })
+    }
+
+    return () => {
+      previousSidebarNavTop = window.getComputedStyle(indicator).top
+      window.cancelAnimationFrame(startFrame)
+      window.cancelAnimationFrame(slideFrame)
+    }
+  }, [active])
+
   const copy = {
     activities: t('กิจกรรมของฉัน', 'My Activities'),
     progress: t('พัฒนาการ', 'My Progress'),
@@ -367,10 +401,11 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
         <span className="user-portal-brand__label">Student Portal</span>
         <button type="button" className="user-portal-close" onClick={() => setMenuOpen(false)} aria-label={copy.closeMenu}><Icon name="close" /></button>
       </div>
-      <nav>
-        <button type="button" className={`${active === 'activities' ? 'is-active' : ''}${guideOpen && guideStep === 1 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={activitiesNavIcon} alt="" /></span><span>{copy.activities}</span></button>
-        <button type="button" className={`${active === 'progress' ? 'is-active' : ''}${guideOpen && guideStep === 2 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={progressNavIcon} alt="" /></span><span>{copy.progress}</span></button>
-        <button type="button" className={`${active === 'profile' ? 'is-active' : ''}${guideOpen && guideStep === 3 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={profileNavIcon} alt="" /></span><span>{copy.profile}</span></button>
+      <nav className={`user-portal-sidebar-nav is-${active}`}>
+        <span ref={sidebarNavIndicatorRef} className="user-portal-sidebar-nav__indicator" aria-hidden="true" />
+        <button type="button" className={`${active === 'activities' ? 'is-active' : ''}${guideOpen && guideStep === 1 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileHomeIcon} alt="" /></span><span>{copy.activities}</span></button>
+        <button type="button" className={`${active === 'progress' ? 'is-active' : ''}${guideOpen && guideStep === 2 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileProgressIcon} alt="" /></span><span>{copy.progress}</span></button>
+        <button type="button" className={`${active === 'profile' ? 'is-active' : ''}${guideOpen && guideStep === 3 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileProfileIcon} alt="" /></span><span>{copy.profile}</span></button>
       </nav>
       <button type="button" className="user-portal-logout" onClick={logout}><Icon name="logout" />{copy.logout}</button>
     </aside>
