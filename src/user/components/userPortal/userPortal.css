@@ -9521,7 +9521,7 @@
   box-sizing: border-box;
   border: 1px solid rgba(255, 255, 255, .86);
   border-radius: 18px;
-  background: radial-gradient(ellipse at 32% 16%, rgba(255, 255, 255, .72), rgba(159, 165, 166, .25) 72%, rgba(255, 255, 255, .32));
+  background: radial-gradient(ellipse at 32% 16%, rgba(255, 255, 255, .72), rgba(159, 165, 166, .32) 72%, rgba(255, 255, 255, .32));
   box-shadow: inset 1px 2px 5px rgba(255, 255, 255, .86), inset -2px -3px 8px rgba(82, 84, 85, .08), 0 5px 14px rgba(55, 47, 42, .08);
   -webkit-backdrop-filter: blur(9px) saturate(105%);
   backdrop-filter: blur(9px) saturate(105%);
@@ -9547,6 +9547,11 @@
 .user-portal-sidebar .user-portal-sidebar-nav button:hover {
   background: rgba(210, 215, 216, .13);
   color: #171514;
+}
+
+.user-portal-sidebar .user-portal-sidebar-nav button:focus-visible {
+  outline: 2px solid #302b28;
+  outline-offset: -4px;
 }
 
 .user-portal-sidebar .user-portal-sidebar-nav button.is-active,
