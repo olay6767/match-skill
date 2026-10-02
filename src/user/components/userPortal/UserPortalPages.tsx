@@ -19,6 +19,9 @@ import barChartArtwork from '../../../assets/773.png'
 import activitiesNavIcon from '../../../assets/กิจกรรม.png'
 import progressNavIcon from '../../../assets/พัฒนาการ.png'
 import profileNavIcon from '../../../assets/โปรไฟล์.png'
+import mobileHomeIcon from '../../../assets/37.png'
+import mobileProgressIcon from '../../../assets/38.png'
+import mobileProfileIcon from '../../../assets/39.png'
 import gmailProfileIcon from '../../../assets/gmail.png'
 import phoneProfileIcon from '../../../assets/number.png'
 import degreeProfileIcon from '../../../assets/ปริญาตรี.png'
@@ -190,12 +193,13 @@ function isSessionError(error: unknown) {
 }
 
 type MobileNavPage = 'activities' | 'progress' | 'profile'
-const mobileNavOffset: Record<MobileNavPage, string> = {
-  activities: '0%',
-  progress: '100%',
-  profile: '200%',
+const mobileNavLeft: Record<MobileNavPage, string> = {
+  activities: '13px',
+  progress: 'calc(33.333333% + 9px)',
+  profile: 'calc(66.666667% + 5px)',
 }
 let previousMobileNavPage: MobileNavPage | null = null
+let previousMobileNavLeft: string | null = null
 
 function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: PortalPageProps & { title: string; titleEn: string; eyebrow: string; active: 'activities' | 'progress' | 'profile'; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -203,7 +207,7 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
   const [guideOpen, setGuideOpen] = useState(false)
   const [guideStep, setGuideStep] = useState(0)
   const languageRef = useRef<HTMLDivElement>(null)
-  const mobileNavRef = useRef<HTMLElement>(null)
+  const mobileNavIndicatorRef = useRef<HTMLSpanElement>(null)
   const { language, setLanguage, t } = usePortalLanguage()
   const onboardingStorageKey = useMemo(() => {
     const studentCode = getStudentPortalSession()?.studentCode
@@ -264,58 +268,30 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
     }
   }, [guideOpen, rememberGuideCompletion])
 
-  useEffect(() => {
-    const nav = mobileNavRef.current
-    if (!nav) return
-
-    const mobileScreen = window.matchMedia('(max-width: 760px)')
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
-    let lastScrollY = window.scrollY
-    let pendingDelta = 0
-    let frame = 0
-    let settleTimer = 0
-
-    const onScroll = () => {
-      const scrollY = window.scrollY
-      const delta = scrollY - lastScrollY
-      lastScrollY = scrollY
-      if (!mobileScreen.matches || reducedMotion.matches || Math.abs(delta) < .5) return
-
-      pendingDelta += delta
-      if (!frame) frame = window.requestAnimationFrame(() => {
-        const force = Math.min(Math.abs(pendingDelta), 65) / 65
-        const direction = Math.sign(pendingDelta)
-        nav.style.setProperty('--liquid-drift', `${Math.round(direction * force * 18)}px`)
-        nav.classList.add('is-scrolling')
-        pendingDelta = 0
-        frame = 0
-      })
-
-      window.clearTimeout(settleTimer)
-      settleTimer = window.setTimeout(() => {
-        nav.classList.remove('is-scrolling')
-        nav.style.removeProperty('--liquid-drift')
-      }, 180)
-    }
-
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      window.cancelAnimationFrame(frame)
-      window.clearTimeout(settleTimer)
-    }
-  }, [])
-
   useLayoutEffect(() => {
     const previous = previousMobileNavPage
     previousMobileNavPage = active
-    const nav = mobileNavRef.current
-    if (!nav || !previous || previous === active || !window.matchMedia('(max-width: 760px)').matches || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const indicator = mobileNavIndicatorRef.current
+    if (!indicator) return
 
-    nav.style.setProperty('--nav-from-offset', mobileNavOffset[previous])
-    nav.classList.add('is-switching')
-    const timer = window.setTimeout(() => nav.classList.remove('is-switching'), 700)
-    return () => window.clearTimeout(timer)
+    let startFrame = 0
+    let slideFrame = 0
+    if (previous && previous !== active && window.matchMedia('(max-width: 760px)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      indicator.style.transition = 'none'
+      indicator.style.left = previousMobileNavLeft ?? mobileNavLeft[previous]
+      startFrame = window.requestAnimationFrame(() => {
+        slideFrame = window.requestAnimationFrame(() => {
+          indicator.style.transition = ''
+          indicator.style.left = ''
+        })
+      })
+    }
+
+    return () => {
+      previousMobileNavLeft = window.getComputedStyle(indicator).left
+      window.cancelAnimationFrame(startFrame)
+      window.cancelAnimationFrame(slideFrame)
+    }
   }, [active])
 
   const copy = {
@@ -417,10 +393,11 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
       </header>
       <div className="user-portal-content">{children}</div>
     </main>
-    <nav ref={mobileNavRef} className={`user-portal-mobile-nav is-${active}`} aria-label={t('เมนูหลัก', 'Main navigation')}>
-      <button type="button" className={active === 'activities' ? 'is-active' : ''} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={activitiesNavIcon} alt="" /></span><span>{copy.activities}</span></button>
-      <button type="button" className={active === 'progress' ? 'is-active' : ''} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={progressNavIcon} alt="" /></span><span>{copy.progress}</span></button>
-      <button type="button" className={active === 'profile' ? 'is-active' : ''} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={profileNavIcon} alt="" /></span><span>{copy.profile}</span></button>
+    <nav className={`user-portal-mobile-nav is-${active}`} aria-label={t('เมนูหลัก', 'Main navigation')}>
+      <span ref={mobileNavIndicatorRef} className="user-portal-mobile-nav__indicator" aria-hidden="true" />
+      <button type="button" className={active === 'activities' ? 'is-active' : ''} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileHomeIcon} alt="" /></span><span>{copy.activities}</span></button>
+      <button type="button" className={active === 'progress' ? 'is-active' : ''} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileProgressIcon} alt="" /></span><span>{copy.progress}</span></button>
+      <button type="button" className={active === 'profile' ? 'is-active' : ''} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileProfileIcon} alt="" /></span><span>{copy.profile}</span></button>
     </nav>
     {guideOpen && <div className="user-portal-guide" role="presentation">
       <div className="user-portal-guide__backdrop" />
