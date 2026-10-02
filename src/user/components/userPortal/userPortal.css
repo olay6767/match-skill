@@ -9557,7 +9557,7 @@
 .user-portal-sidebar .user-portal-sidebar-nav button.is-active,
 .user-portal-sidebar .user-portal-sidebar-nav button.is-active:hover {
   background: transparent;
-  color: #171514;
+  color: var(--portal-orange);
   font-weight: 800;
 }
 
