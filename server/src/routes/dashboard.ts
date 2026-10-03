@@ -41,18 +41,7 @@ function responseFilter(filters: z.infer<typeof filterSchema>, alias = 'sr') {
     clauses.push(`${alias}.activity_id IN (${activityIds.map(() => '?').join(', ')})`)
     values.push(...activityIds)
   }
-  clauses.push(pairedResponseCondition(alias))
   return { sql: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', values }
-}
-
-function pairedResponseCondition(alias = 'sr') {
-  return `EXISTS (
-    SELECT 1 FROM survey_responses paired_response
-    WHERE paired_response.activity_id = ${alias}.activity_id
-      AND paired_response.student_id = ${alias}.student_id
-    GROUP BY paired_response.activity_id, paired_response.student_id
-    HAVING SUM(paired_response.phase = 'pre') > 0 AND SUM(paired_response.phase = 'post') > 0
-  )`
 }
 
 export const dashboardRouter = Router()
@@ -69,8 +58,14 @@ dashboardRouter.get('/summary', async (request, response) => {
     `SELECT
       COALESCE(SUM(CASE WHEN sr.phase = 'pre' THEN 1 ELSE 0 END), 0) AS pre_count,
       COALESCE(SUM(CASE WHEN sr.phase = 'post' THEN 1 ELSE 0 END), 0) AS post_count,
-      COUNT(DISTINCT CONCAT(sr.student_id, ':', sr.activity_id)) AS paired_count
-     FROM survey_responses sr ${filter.sql}`,
+      COUNT(DISTINCT CASE WHEN paired.student_id IS NOT NULL THEN CONCAT(sr.student_id, ':', sr.activity_id) END) AS paired_count
+     FROM survey_responses sr
+     LEFT JOIN (
+       SELECT student_id, activity_id FROM survey_responses
+       GROUP BY student_id, activity_id
+       HAVING SUM(phase = 'pre') > 0 AND SUM(phase = 'post') > 0
+     ) paired ON paired.student_id = sr.student_id AND paired.activity_id = sr.activity_id
+     ${filter.sql}`,
     filter.values,
   )
   const preCount = Number(rows[0]?.pre_count ?? 0)
@@ -134,7 +129,7 @@ dashboardRouter.get('/recent-activities', async (request, response) => {
   const total = Number(countRows[0]?.total ?? 0)
   const totalPages = total === 0 ? 0 : Math.ceil(total / query.pageSize)
   const page = totalPages > 0 ? Math.min(query.page, totalPages) : 1
-  const responseConditions = [pairedResponseCondition('sr')]
+  const responseConditions: string[] = []
   const responseValues: string[] = []
   if (query.from) { responseConditions.push('DATE(sr.submitted_at) >= ?'); responseValues.push(query.from) }
   if (query.to) { responseConditions.push('DATE(sr.submitted_at) <= ?'); responseValues.push(query.to) }
@@ -144,7 +139,7 @@ dashboardRouter.get('/recent-activities', async (request, response) => {
       COUNT(DISTINCT CASE WHEN sr.phase = 'pre' THEN sr.id END) AS pre_count,
       COUNT(DISTINCT CASE WHEN sr.phase = 'post' THEN sr.id END) AS post_count
      FROM activities a
-     LEFT JOIN survey_responses sr ON sr.activity_id = a.id AND ${responseConditions.join(' AND ')}
+     LEFT JOIN survey_responses sr ON sr.activity_id = a.id${responseConditions.length ? ` AND ${responseConditions.join(' AND ')}` : ''}
      ${activityWhere}
      GROUP BY a.id
      ORDER BY a.created_at DESC, a.id DESC LIMIT ? OFFSET ?`, [...responseValues, ...activityIds, query.pageSize, (page - 1) * query.pageSize],
