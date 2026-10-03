@@ -298,3 +298,114 @@
     animation: none;
   }
 }
+
+/* Clear hierarchy and a useful empty state for competency scores. */
+.analytics-comparison--compact .analytics-comparison__heading {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.analytics-comparison__heading > span {
+  color: #d76a1b;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.analytics-comparison--compact .analytics-comparison__heading h2 {
+  color: #342b25;
+  font-size: clamp(20px, 2vw, 24px);
+  line-height: 1.3;
+}
+
+.analytics-comparison--compact .analytics-comparison__heading p {
+  color: #82746a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.analytics-comparison__pending {
+  flex: 0 0 auto;
+  border: 1px solid #f5ddc8;
+  border-radius: 999px;
+  background: #fff5eb;
+  padding: 7px 12px;
+  color: #ae581b;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.analytics-comparison__empty {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-sizing: border-box;
+  width: min(100%, 740px);
+  margin: 0 auto 2px;
+  border: 1px solid #f3e5d9;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff8f1, #fffdfb 55%, #fff);
+  padding: 21px 25px;
+}
+
+.analytics-comparison__empty-icon {
+  display: grid;
+  flex: 0 0 62px;
+  width: 62px;
+  height: 62px;
+  place-items: center;
+  border: 1px solid #f4dac4;
+  border-radius: 18px;
+  background: #fff0e2;
+  color: #dd681b;
+}
+
+.analytics-comparison__empty-icon .ui-icon {
+  font-size: 31px;
+}
+
+.analytics-comparison__empty > div {
+  min-width: 0;
+}
+
+.analytics-comparison__empty strong {
+  color: #3e3028;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.analytics-comparison__empty p {
+  max-width: 58ch;
+  margin: 5px 0 0;
+  color: #806f62;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+@media (max-width: 620px) {
+  .analytics-comparison--compact .analytics-panel__header {
+    align-items: start;
+  }
+
+  .analytics-comparison__pending {
+    justify-self: start;
+  }
+
+  .analytics-comparison__empty {
+    gap: 13px;
+    padding: 16px;
+  }
+
+  .analytics-comparison__empty-icon {
+    flex-basis: 48px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  .analytics-comparison__empty-icon .ui-icon {
+    font-size: 26px;
+  }
+}

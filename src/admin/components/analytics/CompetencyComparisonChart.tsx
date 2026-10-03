@@ -1,4 +1,5 @@
 import type { AnalyticsCompetency } from "../../../lib/api"
+import Icon from '../../../shared/components/ui/Icon'
 
 type Props = { competencies: AnalyticsCompetency[] }
 
@@ -10,12 +11,13 @@ const growthTone = (value: number | null) => value === null || Math.abs(value) <
   : value > 0 ? "is-positive" : "is-negative"
 
 function CompetencyComparisonChart({ competencies }: Props) {
-  return <section className="analytics-panel analytics-comparison analytics-comparison--compact" aria-labelledby="analytics-comparison-title">
+  const hasScores = competencies.length > 0
+  return <section className={`analytics-panel analytics-comparison analytics-comparison--compact${hasScores ? '' : ' is-empty'}`} aria-labelledby="analytics-comparison-title">
     <div className="analytics-panel__header">
-      <h2 id="analytics-comparison-title">คะแนนรายสมรรถนะ</h2>
-      <div className="analytics-legend" aria-label="คำอธิบายสี"><span className="is-pre"><i className="analytics-legend__pre" />Pre-test</span><span className="is-post"><i className="analytics-legend__post" />Post-test</span></div>
+      <div className="analytics-comparison__heading"><span>COMPETENCY SCORES</span><h2 id="analytics-comparison-title">คะแนนรายสมรรถนะ</h2><p>เปรียบเทียบคะแนนเฉลี่ยก่อนและหลังการเข้าร่วมกิจกรรม</p></div>
+      {hasScores ? <div className="analytics-legend" aria-label="คำอธิบายสี"><span className="is-pre"><i className="analytics-legend__pre" />Pre-test</span><span className="is-post"><i className="analytics-legend__post" />Post-test</span></div> : <span className="analytics-comparison__pending">รอข้อมูลครบคู่</span>}
     </div>
-    {competencies.length === 0 ? <div className="analytics-empty">ยังไม่มีข้อมูลคะแนน</div> : <div className="analytics-bars" aria-label="กราฟคะแนน Pre-test และ Post-test รายสมรรถนะ">
+    {!hasScores ? <div className="analytics-comparison__empty" role="status"><span className="analytics-comparison__empty-icon" aria-hidden="true"><Icon name="analytics" /></span><div><strong>ยังไม่มีคะแนนสำหรับเปรียบเทียบ</strong><p>กราฟจะแสดงเมื่อมีผู้เข้าร่วมส่งทั้ง Pre-test และ Post-test ในกิจกรรมเดียวกันตามตัวกรองที่เลือก</p></div></div> : <div className="analytics-bars" aria-label="กราฟคะแนน Pre-test และ Post-test รายสมรรถนะ">
       {competencies.map((item) => <article className="analytics-bar-row" key={item.id}>
         <div className="analytics-bar-row__title">
           <em>{item.displayOrder}</em>
