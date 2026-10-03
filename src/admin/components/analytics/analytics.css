@@ -384,7 +384,15 @@
   line-height: 1.55;
 }
 
+.final-analysis-dashboard + .analytics-comparison--compact {
+  margin-top: 30px;
+}
+
 @media (max-width: 620px) {
+  .final-analysis-dashboard + .analytics-comparison--compact {
+    margin-top: 22px;
+  }
+
   .analytics-comparison--compact .analytics-panel__header {
     align-items: start;
   }
