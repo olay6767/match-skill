@@ -208,6 +208,10 @@ let previousMobileNavLeft: string | null = null
 let previousSidebarNavPage: PortalNavPage | null = null
 let previousSidebarNavTop: string | null = null
 
+function PortalNavIcon({ src, selectedIcon }: { src: string; selectedIcon: 'home' | 'analytics' | 'person' }) {
+  return <span className="user-portal-nav-icon" aria-hidden="true"><img src={src} alt="" /><Icon name={selectedIcon} className="user-portal-nav-icon__selected" /></span>
+}
+
 function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: PortalPageProps & { title: string; titleEn: string; eyebrow: string; active: 'activities' | 'progress' | 'profile'; children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [languageOpen, setLanguageOpen] = useState(false)
@@ -403,9 +407,9 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
       </div>
       <nav className={`user-portal-sidebar-nav is-${active}`}>
         <span ref={sidebarNavIndicatorRef} className="user-portal-sidebar-nav__indicator" aria-hidden="true" />
-        <button type="button" className={`${active === 'activities' ? 'is-active' : ''}${guideOpen && guideStep === 1 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileHomeIcon} alt="" /></span><span>{copy.activities}</span></button>
-        <button type="button" className={`${active === 'progress' ? 'is-active' : ''}${guideOpen && guideStep === 2 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileProgressIcon} alt="" /></span><span>{copy.progress}</span></button>
-        <button type="button" className={`${active === 'profile' ? 'is-active' : ''}${guideOpen && guideStep === 3 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileProfileIcon} alt="" /></span><span>{copy.profile}</span></button>
+        <button type="button" className={`${active === 'activities' ? 'is-active' : ''}${guideOpen && guideStep === 1 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><PortalNavIcon src={mobileHomeIcon} selectedIcon="home" /><span>{copy.activities}</span></button>
+        <button type="button" className={`${active === 'progress' ? 'is-active' : ''}${guideOpen && guideStep === 2 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><PortalNavIcon src={mobileProgressIcon} selectedIcon="analytics" /><span>{copy.progress}</span></button>
+        <button type="button" className={`${active === 'profile' ? 'is-active' : ''}${guideOpen && guideStep === 3 ? ' is-guide-highlighted' : ''}`} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><PortalNavIcon src={mobileProfileIcon} selectedIcon="person" /><span>{copy.profile}</span></button>
       </nav>
       <button type="button" className="user-portal-logout" onClick={logout}><Icon name="logout" />{copy.logout}</button>
     </aside>
@@ -430,9 +434,9 @@ function PortalShell({ title, titleEn, eyebrow, active, onNavigate, children }: 
     </main>
     <nav className={`user-portal-mobile-nav is-${active}`} aria-label={t('เมนูหลัก', 'Main navigation')}>
       <span ref={mobileNavIndicatorRef} className="user-portal-mobile-nav__indicator" aria-hidden="true" />
-      <button type="button" className={active === 'activities' ? 'is-active' : ''} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileHomeIcon} alt="" /></span><span>{copy.activities}</span></button>
-      <button type="button" className={active === 'progress' ? 'is-active' : ''} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileProgressIcon} alt="" /></span><span>{copy.progress}</span></button>
-      <button type="button" className={active === 'profile' ? 'is-active' : ''} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><span className="user-portal-nav-icon" aria-hidden="true"><img src={mobileProfileIcon} alt="" /></span><span>{copy.profile}</span></button>
+      <button type="button" className={active === 'activities' ? 'is-active' : ''} aria-current={active === 'activities' ? 'page' : undefined} onClick={() => move('/user/activities')}><PortalNavIcon src={mobileHomeIcon} selectedIcon="home" /><span>{copy.activities}</span></button>
+      <button type="button" className={active === 'progress' ? 'is-active' : ''} aria-current={active === 'progress' ? 'page' : undefined} onClick={() => move('/user/progress')}><PortalNavIcon src={mobileProgressIcon} selectedIcon="analytics" /><span>{copy.progress}</span></button>
+      <button type="button" className={active === 'profile' ? 'is-active' : ''} aria-current={active === 'profile' ? 'page' : undefined} onClick={() => move('/user/profile')}><PortalNavIcon src={mobileProfileIcon} selectedIcon="person" /><span>{copy.profile}</span></button>
     </nav>
     {guideOpen && <div className="user-portal-guide" role="presentation">
       <div className="user-portal-guide__backdrop" />

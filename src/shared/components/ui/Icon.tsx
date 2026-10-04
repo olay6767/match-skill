@@ -12,6 +12,7 @@ export type IconName =
   | 'external'
   | 'eye'
   | 'hourglass'
+  | 'home'
   | 'edit'
   | 'logout'
   | 'lock'
@@ -57,6 +58,7 @@ const materialSymbolNames: Record<IconName, string> = {
   external: 'open_in_new',
   eye: 'visibility',
   hourglass: 'hourglass_empty',
+  home: 'home',
   edit: 'edit',
   logout: 'logout',
   lock: 'lock',

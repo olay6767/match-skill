@@ -9828,3 +9828,26 @@
     transition: none;
   }
 }
+
+/* Show a solid black symbol for the selected student destination on every screen. */
+.user-portal-shell nav .user-portal-nav-icon > .user-portal-nav-icon__selected {
+  display: none;
+  color: #090b0d;
+  font-size: 40px;
+  font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 48;
+  line-height: 1;
+}
+
+.user-portal-shell nav button.is-active .user-portal-nav-icon > img {
+  display: none;
+}
+
+.user-portal-shell nav button.is-active .user-portal-nav-icon > .user-portal-nav-icon__selected {
+  display: block;
+}
+
+@media (max-width: 820px) {
+  .user-portal-shell .user-portal-mobile-nav .user-portal-nav-icon > .user-portal-nav-icon__selected {
+    font-size: 34px;
+  }
+}
