@@ -9829,7 +9829,13 @@
   }
 }
 
-/* Keep the original navigation artwork and darken only the selected icon. */
+/* Keep the original artwork while making the selected icon visibly darker. */
+.user-portal-shell .user-portal-sidebar-nav button:not(.is-active) .user-portal-nav-icon img,
+.user-portal-shell .user-portal-mobile-nav button:not(.is-active) .user-portal-nav-icon img {
+  opacity: 1;
+  filter: brightness(0) invert(52%);
+}
+
 .user-portal-shell .user-portal-sidebar-nav button.is-active .user-portal-nav-icon img,
 .user-portal-shell .user-portal-mobile-nav button.is-active .user-portal-nav-icon img {
   opacity: 1;
