@@ -465,12 +465,15 @@ publicSurveyRouter.post('/:token/identify', async (request, response) => {
       return
     }
 
+    // The student row lock above serializes session lookup/creation for this student.
+    // Avoid a locking read here: when no session exists, InnoDB can take a gap lock
+    // that deadlocks concurrent registrations for other students on the same activity.
     const incompleteSessions = await connection.query<ExistingSurveySessionRow[]>(
       `SELECT id, expires_at
        FROM survey_sessions
        WHERE activity_id = ? AND student_id = ? AND phase = ?
        ORDER BY created_at DESC, id DESC
-       LIMIT 1 FOR UPDATE`,
+       LIMIT 1`,
       [survey.activity_id, studentId, survey.phase],
     )
     const previousSession = incompleteSessions[0]
@@ -655,8 +658,11 @@ publicSurveyRouter.post('/:token/responses', async (request, response) => {
       throw new ApiError(400, 'กรุณาตอบแบบประเมินให้ครบทั้ง 9 ข้อ')
     }
 
+    // lockOpenSurveySession has already locked this student and session. A locking
+    // read for a missing response can gap-lock the unique index and deadlock
+    // simultaneous submissions from other students.
     const existingResponses = await connection.query<Array<{ id: number }>>(
-      'SELECT id FROM survey_responses WHERE activity_id = ? AND student_id = ? AND phase = ? LIMIT 1 FOR UPDATE',
+      'SELECT id FROM survey_responses WHERE activity_id = ? AND student_id = ? AND phase = ? LIMIT 1',
       [session.activity_id, session.student_id, session.phase],
     )
     if (existingResponses[0]) {
