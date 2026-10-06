@@ -127,13 +127,15 @@ const identifyAttemptWindowMs = 10 * 60 * 1000
 const identifyAttemptLimit = 10
 const identifyAttempts = new Map<string, { count: number; resetAt: number }>()
 
-function limitIdentifyAttempts(ip: string, token: string) {
+function limitIdentifyAttempts(token: string, studentCode: string) {
   const now = Date.now()
   for (const [key, value] of identifyAttempts) {
     if (value.resetAt <= now) identifyAttempts.delete(key)
   }
 
-  const key = `${ip}:${token}`
+  // Students commonly share one public IP through campus Wi-Fi or the Vercel
+  // proxy. Keep retries isolated to the student and survey instead.
+  const key = `${token}:${studentCode}`
   const current = identifyAttempts.get(key)
   if (!current || current.resetAt <= now) {
     identifyAttempts.set(key, { count: 1, resetAt: now + identifyAttemptWindowMs })
@@ -320,9 +322,9 @@ publicSurveyRouter.get('/:token', async (request, response) => {
 
 publicSurveyRouter.post('/:token/identify', async (request, response) => {
   const token = surveyTokenSchema.parse(request.params.token ?? '')
-  limitIdentifyAttempts(request.ip ?? 'unknown', token)
   ensureDatabaseAvailable()
   const input = identifySchema.parse(request.body)
+  limitIdentifyAttempts(token, input.studentCode)
   const connection = await pool.getConnection()
 
   try {
