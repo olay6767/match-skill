@@ -12,8 +12,8 @@ export const pool = mariadb.createPool({
   allowPublicKeyRetrieval:
     env.NODE_ENV !== 'production' || env.DB_HOST.toLowerCase().endsWith('.railway.internal'),
   connectTimeout: 5_000,
-  connectionLimit: 5,
-  acquireTimeout: 10_000,
+  connectionLimit: 10,
+  acquireTimeout: 20_000,
   bigIntAsNumber: true,
   insertIdAsNumber: true,
   decimalAsNumber: true,

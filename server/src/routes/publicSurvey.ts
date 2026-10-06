@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { Router } from 'express'
+import type { PoolConnection } from 'mariadb'
 import { z } from 'zod'
 import { isDatabaseAvailable } from '../db/availability.js'
 import { pool } from '../db/pool.js'
@@ -17,6 +18,7 @@ type SurveyRow = {
   name: string
   cover_image_data: string | null
   form_theme_json: string | null
+  survey_template_id: number | null
   phase: Phase
   duration_minutes: number | string
   window_status: SurveyStatus
@@ -42,6 +44,17 @@ type SurveySessionAnswerRow = {
 type ExistingSurveySessionRow = {
   id: number
   expires_at: Date | string
+}
+type LockedSurveySessionRow = {
+  session_id: number
+  student_id: number
+}
+type SurveyWriteSession = {
+  session_id: number
+  activity_id: number
+  student_id: number
+  survey_template_id: number
+  phase: Phase
 }
 type QuestionRow = {
   question_id: number
@@ -145,7 +158,8 @@ function limitIdentifyAttempts(token: string, studentCode: string) {
   current.count += 1
 }
 
-function surveyStatusQuery(lock = false, includePresentation = true) {
+function surveyStatusQuery(options: { includePresentation?: boolean; sharedLock?: boolean } = {}) {
+  const { includePresentation = true, sharedLock = false } = options
   const presentationFields = includePresentation
     ? "a.name, a.cover_image_data, a.form_theme_json,"
     : "'' AS name, NULL AS cover_image_data, NULL AS form_theme_json,"
@@ -154,6 +168,7 @@ function surveyStatusQuery(lock = false, includePresentation = true) {
     q.id AS qr_id,
     q.activity_id,
     ${presentationFields}
+    a.survey_template_id,
     q.phase,
     CASE WHEN q.phase = 'pre' THEN a.pre_test_duration_minutes ELSE a.post_test_duration_minutes END AS duration_minutes,
     CASE
@@ -168,10 +183,10 @@ function surveyStatusQuery(lock = false, includePresentation = true) {
    FROM qr_codes q
    JOIN activities a ON a.id = q.activity_id
    WHERE q.token = ?
-   LIMIT 1${lock ? ' FOR UPDATE' : ''}`
+   LIMIT 1${sharedLock ? ' LOCK IN SHARE MODE' : ''}`
 }
 
-function surveySessionQuery(lock = false) {
+function surveySessionQuery() {
   return `SELECT
     ss.id AS session_id,
     q.id AS qr_id,
@@ -195,7 +210,7 @@ function surveySessionQuery(lock = false) {
    JOIN qr_codes q ON q.id = ss.qr_code_id
    JOIN activities a ON a.id = ss.activity_id
    WHERE q.token = ? AND ss.session_hash = ? AND ss.expires_at > NOW()
-   LIMIT 1${lock ? ' FOR UPDATE' : ''}`
+   LIMIT 1`
 }
 
 async function findSurvey(token: string) {
@@ -228,6 +243,64 @@ function ensureOpenSurveySession(session: SurveySessionRow | undefined) {
   }
   if (!session.survey_template_id) throw new ApiError(409, 'กิจกรรมนี้ยังไม่ได้กำหนดแบบประเมิน')
   return session as SurveySessionRow & { survey_template_id: number; window_status: 'open' }
+}
+
+async function lockOpenSurveySession(
+  connection: PoolConnection,
+  token: string,
+  hashedSession: string,
+): Promise<SurveyWriteSession> {
+  const surveyRows = await connection.query<SurveyRow[]>(
+    surveyStatusQuery({ includePresentation: false, sharedLock: true }),
+    [token],
+  )
+  const survey = surveyRows[0]
+  if (!survey || survey.window_status === 'invalid') {
+    throw new ApiError(401, 'เซสชันแบบประเมินไม่ถูกต้องหรือหมดอายุ')
+  }
+  if (survey.window_status !== 'open') {
+    const statusMessage: Record<Exclude<SurveyStatus, 'invalid' | 'open'>, string> = {
+      not_open: 'แบบประเมินยังไม่เปิด',
+      closed: 'แบบประเมินปิดรับแล้ว',
+      archived: 'กิจกรรมนี้ถูกเก็บถาวรแล้ว',
+    }
+    throw new ApiError(409, statusMessage[survey.window_status])
+  }
+  if (!survey.survey_template_id) throw new ApiError(409, 'กิจกรรมนี้ยังไม่ได้กำหนดแบบประเมิน')
+
+  const candidateRows = await connection.query<LockedSurveySessionRow[]>(
+    `SELECT id AS session_id, student_id
+     FROM survey_sessions
+     WHERE session_hash = ? AND qr_code_id = ? AND activity_id = ? AND phase = ? AND expires_at > NOW()
+     LIMIT 1`,
+    [hashedSession, survey.qr_id, survey.activity_id, survey.phase],
+  )
+  const candidate = candidateRows[0]
+  if (!candidate) throw new ApiError(401, 'เซสชันแบบประเมินไม่ถูกต้องหรือหมดอายุ')
+
+  const studentRows = await connection.query<Array<{ id: number }>>(
+    'SELECT id FROM students WHERE id = ? LIMIT 1 FOR UPDATE',
+    [candidate.student_id],
+  )
+  if (!studentRows[0]) throw new ApiError(401, 'เซสชันแบบประเมินไม่ถูกต้องหรือหมดอายุ')
+
+  const sessionRows = await connection.query<LockedSurveySessionRow[]>(
+    `SELECT id AS session_id, student_id
+     FROM survey_sessions
+     WHERE id = ? AND session_hash = ? AND qr_code_id = ? AND activity_id = ? AND phase = ? AND expires_at > NOW()
+     LIMIT 1 FOR UPDATE`,
+    [candidate.session_id, hashedSession, survey.qr_id, survey.activity_id, survey.phase],
+  )
+  const session = sessionRows[0]
+  if (!session) throw new ApiError(401, 'เซสชันแบบประเมินไม่ถูกต้องหรือหมดอายุ')
+
+  return {
+    session_id: Number(session.session_id),
+    activity_id: Number(survey.activity_id),
+    student_id: Number(session.student_id),
+    survey_template_id: Number(survey.survey_template_id),
+    phase: survey.phase,
+  }
 }
 
 function ensureResultSurveySession(session: SurveySessionRow | undefined) {
@@ -329,7 +402,10 @@ publicSurveyRouter.post('/:token/identify', async (request, response) => {
 
   try {
     await connection.beginTransaction()
-    const surveyRows = await connection.query<SurveyRow[]>(surveyStatusQuery(true, false), [token])
+    const surveyRows = await connection.query<SurveyRow[]>(
+      surveyStatusQuery({ includePresentation: false, sharedLock: true }),
+      [token],
+    )
     const survey = ensureReadableSurvey(surveyRows[0])
     if (survey.window_status !== 'open') {
       const statusMessage: Record<Exclude<SurveyStatus, 'invalid' | 'open'>, string> = {
@@ -341,7 +417,7 @@ publicSurveyRouter.post('/:token/identify', async (request, response) => {
     }
 
     const students = await connection.query<Array<{ id: number }>>(
-      'SELECT id FROM students WHERE student_code = ? LIMIT 1 FOR UPDATE',
+      'SELECT id FROM students WHERE student_code = ? LIMIT 1',
       [input.studentCode],
     )
 
@@ -354,13 +430,20 @@ publicSurveyRouter.post('/:token/identify', async (request, response) => {
         return
       }
       const registration = registrationSchema.parse(input)
-      const created = await connection.query(
+      await connection.query(
         `INSERT INTO students (student_code, email, first_name, last_name, full_name, faculty, major, education_level, study_year, phone, pdpa_consented_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)`,
         [registration.studentCode, registration.email, registration.firstName, registration.lastName, `${registration.firstName} ${registration.lastName}`, registration.faculty, registration.major, educationLevelFromStudentCode(registration.studentCode), registration.studyYear, registration.phone],
       )
-      studentId = Number(created.insertId)
     }
+
+    const lockedStudents = await connection.query<Array<{ id: number }>>(
+      'SELECT id FROM students WHERE student_code = ? LIMIT 1 FOR UPDATE',
+      [input.studentCode],
+    )
+    studentId = Number(lockedStudents[0]?.id)
+    if (!studentId) throw new ApiError(409, 'ข้อมูลนักศึกษามีการเปลี่ยนแปลง กรุณาลองใหม่อีกครั้ง')
 
     const existingResponses = await connection.query<Array<{ id: number }>>(
       `SELECT id FROM survey_responses
@@ -520,11 +603,17 @@ publicSurveyRouter.put('/:token/draft', async (request, response) => {
 
   try {
     await connection.beginTransaction()
-    const sessionRows = await connection.query<SurveySessionRow[]>(surveySessionQuery(true), [token, sessionHash(input.surveySession)])
-    const session = ensureOpenSurveySession(sessionRows[0])
-    const questionRows = await connection.query<QuestionRow[]>(questionsQuery(), [session.survey_template_id])
-    const question = serializeQuestions(questionRows).find((item) => item.questionId === input.questionId)
-    if (!question || question.competencyId !== input.competencyId || !question.levels.some((level) => level.levelValue === input.levelValue)) {
+    const session = await lockOpenSurveySession(connection, token, sessionHash(input.surveySession))
+    const validAnswers = await connection.query<Array<{ question_id: number }>>(
+      `SELECT q.id AS question_id
+       FROM questions q
+       JOIN competency_levels l ON l.competency_id = q.competency_id
+       WHERE q.template_id = ? AND q.is_required = TRUE
+         AND q.id = ? AND q.competency_id = ? AND l.level = ?
+       LIMIT 1`,
+      [session.survey_template_id, input.questionId, input.competencyId, input.levelValue],
+    )
+    if (!validAnswers[0]) {
       throw new ApiError(400, 'มีคำตอบที่ไม่ตรงกับแบบประเมินนี้')
     }
     await connection.query(
@@ -551,8 +640,7 @@ publicSurveyRouter.post('/:token/responses', async (request, response) => {
 
   try {
     await connection.beginTransaction()
-    const sessionRows = await connection.query<SurveySessionRow[]>(surveySessionQuery(true), [token, sessionHash(input.surveySession)])
-    const session = ensureOpenSurveySession(sessionRows[0])
+    const session = await lockOpenSurveySession(connection, token, sessionHash(input.surveySession))
     const questionRows = await connection.query<QuestionRow[]>(questionsQuery(), [session.survey_template_id])
     const questions = serializeQuestions(questionRows)
     const questionById = new Map(questions.map((question) => [question.questionId, question]))
@@ -582,12 +670,12 @@ publicSurveyRouter.post('/:token/responses', async (request, response) => {
       [session.activity_id, session.student_id, session.phase],
     )
     const responseId = Number(created.insertId)
-    for (const answer of input.answers) {
-      await connection.query(
-        'INSERT INTO response_answers (response_id, competency_id, score) VALUES (?, ?, ?)',
-        [responseId, answer.competencyId, answer.levelValue],
-      )
-    }
+    const answerPlaceholders = input.answers.map(() => '(?, ?, ?)').join(', ')
+    const answerValues = input.answers.flatMap((answer) => [responseId, answer.competencyId, answer.levelValue])
+    await connection.query(
+      `INSERT INTO response_answers (response_id, competency_id, score) VALUES ${answerPlaceholders}`,
+      answerValues,
+    )
     await connection.query('DELETE FROM survey_session_answers WHERE survey_session_id = ?', [session.session_id])
     await connection.commit()
     response.status(201).json({ responseId, next: 'result' })
