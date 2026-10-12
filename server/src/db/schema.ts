@@ -1,6 +1,16 @@
 import { pool } from './pool.js'
 import { ensureAssessmentSeed } from './assessmentSeed.js'
 
+const sessionAccessTokensSchema = `CREATE TABLE IF NOT EXISTS survey_session_access_tokens (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  survey_session_id BIGINT UNSIGNED NOT NULL,
+  session_hash CHAR(64) NOT NULL UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_survey_session_access_tokens_session FOREIGN KEY (survey_session_id)
+    REFERENCES survey_sessions(id) ON DELETE CASCADE,
+  INDEX idx_survey_session_access_tokens_session (survey_session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`
+
 const schemaStatements = [
   `CREATE TABLE IF NOT EXISTS admins (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -234,6 +244,7 @@ const schemaStatements = [
     CONSTRAINT fk_survey_sessions_student FOREIGN KEY (student_id) REFERENCES students(id),
     INDEX idx_survey_sessions_lookup (activity_id, student_id, phase, expires_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  sessionAccessTokensSchema,
   `CREATE TABLE IF NOT EXISTS survey_session_answers (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     survey_session_id BIGINT UNSIGNED NOT NULL,
@@ -370,7 +381,7 @@ const schemaStatements = [
 
 // Increment this whenever schemaStatements gains a new migration so existing
 // databases do not skip newly-added columns.
-const schemaVersion = 2
+const schemaVersion = 3
 
 export async function ensureSchema() {
   await pool.query(`CREATE TABLE IF NOT EXISTS app_schema_versions (
@@ -379,10 +390,17 @@ export async function ensureSchema() {
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
 
   const appliedVersions = await pool.query<Array<{ version: number }>>(
-    "SELECT version FROM app_schema_versions WHERE version = ? LIMIT 1",
+    "SELECT version FROM app_schema_versions WHERE version IN (2, ?)",
     [schemaVersion],
   )
-  if (appliedVersions[0]) return
+  if (appliedVersions.some((row) => row.version === schemaVersion)) return
+  if (appliedVersions.some((row) => row.version === 2)) {
+    // Upgrade only the new table. Replaying legacy seeds would overwrite
+    // assessment content that administrators have already customized.
+    await pool.query(sessionAccessTokensSchema)
+    await pool.query('INSERT IGNORE INTO app_schema_versions (version) VALUES (?)', [schemaVersion])
+    return
+  }
 
   for (const statement of schemaStatements) {
     const compatibleStatement = statement

@@ -1,6 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express'
 import { ZodError } from 'zod'
-import { setDatabaseAvailable } from '../db/availability.js'
 
 const databaseConnectionErrorCodes = new Set([
   'ECONNREFUSED',
@@ -32,7 +31,7 @@ export const notFoundHandler: RequestHandler = (_request, response) => {
   response.status(404).json({ message: 'ไม่พบ API ที่เรียก' })
 }
 
-export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
+export const errorHandler: ErrorRequestHandler = (error, request, response, _next) => {
   void _next
   if (error instanceof ZodError) {
     response.status(400).json({
@@ -46,12 +45,19 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
   }
 
   if (error instanceof ApiError) {
+    if (error.status >= 429) {
+      console.warn('API request rejected:', {
+        status: error.status,
+        method: request.method,
+        route: request.route?.path ?? request.baseUrl ?? 'unknown',
+        message: error.message,
+      })
+    }
     response.status(error.status).json({ message: error.message })
     return
   }
 
   if (isDatabaseConnectionError(error)) {
-    setDatabaseAvailable(false)
     console.error('Database connection unavailable:', error)
     response.status(503).json({ message: 'ระบบฐานข้อมูลไม่พร้อมใช้งาน กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง' })
     return

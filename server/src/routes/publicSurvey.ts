@@ -16,7 +16,7 @@ type SurveyRow = {
   qr_id: number
   activity_id: number
   name: string
-  cover_image_data: string | null
+  has_cover_image: number | boolean
   form_theme_json: string | null
   survey_template_id: number | null
   phase: Phase
@@ -30,7 +30,7 @@ type SurveySessionRow = {
   activity_id: number
   student_id: number
   activity_name: string
-  activity_image_data: string | null
+  has_assessment_image: number | boolean
   form_theme_json: string | null
   survey_template_id: number | null
   phase: Phase
@@ -78,6 +78,9 @@ type ResultAnswerRow = {
   display_order: number
   score: number
 }
+type SurveyMediaKind = 'cover' | 'assessment'
+type SurveyMedia = { body: Buffer; contentType: string; etag: string }
+type SurveyMediaCacheEntry = { expiresAt: number; media: SurveyMedia | null }
 
 const surveyTokenSchema = z.string().regex(/^[a-f0-9]{64}$/, 'QR Code ไม่ถูกต้อง')
 const studentCodeSchema = z.string().transform(normalizeStudentCode)
@@ -137,32 +140,60 @@ const submitResponseSchema = z.object({
 })
 
 const identifyAttemptWindowMs = 10 * 60 * 1000
-const identifyAttemptLimit = 10
+const identifyAttemptLimit = 20
 const identifyAttempts = new Map<string, { count: number; resetAt: number }>()
+const identifyTrafficWindowMs = 60 * 1000
+const identifyTrafficLimit = 600
+const identifyTraffic = new Map<string, { count: number; resetAt: number }>()
+const maxSurveySessionAliases = 5
+const surveyMediaCacheTtlMs = 60 * 1000
+const surveyMediaCacheLimit = 12
+const surveyMediaCache = new Map<string, SurveyMediaCacheEntry>()
+const surveyMediaLoads = new Map<string, Promise<SurveyMedia | null>>()
 
-function limitIdentifyAttempts(token: string, studentCode: string) {
+function identifyAttemptKey(token: string, studentCode: string, clientIp: string) {
+  return `${token}:${studentCode}:${clientIp}`
+}
+
+function limitIdentifyAttempts(token: string, studentCode: string, clientIp: string) {
   const now = Date.now()
   for (const [key, value] of identifyAttempts) {
     if (value.resetAt <= now) identifyAttempts.delete(key)
   }
 
-  // Students commonly share one public IP through campus Wi-Fi or the Vercel
-  // proxy. Keep retries isolated to the student and survey instead.
-  const key = `${token}:${studentCode}`
+  // Successful identification clears this failure bucket. A separate generous
+  // traffic cap covers bursts without sharing a ten-minute lock across students.
+  const key = identifyAttemptKey(token, studentCode, clientIp)
   const current = identifyAttempts.get(key)
   if (!current || current.resetAt <= now) {
     identifyAttempts.set(key, { count: 1, resetAt: now + identifyAttemptWindowMs })
+    return key
+  }
+  if (current.count >= identifyAttemptLimit) throw new ApiError(429, 'ลองใหม่อีกครั้งหลังจากรอ 10 นาที')
+  current.count += 1
+  return key
+}
+
+function limitIdentifyTraffic(token: string, clientIp: string) {
+  const now = Date.now()
+  for (const [key, value] of identifyTraffic) {
+    if (value.resetAt <= now) identifyTraffic.delete(key)
+  }
+  const key = `${token}:${clientIp}`
+  const current = identifyTraffic.get(key)
+  if (!current || current.resetAt <= now) {
+    identifyTraffic.set(key, { count: 1, resetAt: now + identifyTrafficWindowMs })
     return
   }
-  if (current.count >= identifyAttemptLimit) throw new ApiError(429, 'ลองใหม่อีกครั้งในภายหลัง')
+  if (current.count >= identifyTrafficLimit) throw new ApiError(429, 'มีผู้ใช้งานพร้อมกันจำนวนมาก กรุณารอสักครู่แล้วลองใหม่')
   current.count += 1
 }
 
 function surveyStatusQuery(options: { includePresentation?: boolean; sharedLock?: boolean } = {}) {
   const { includePresentation = true, sharedLock = false } = options
   const presentationFields = includePresentation
-    ? "a.name, a.cover_image_data, a.form_theme_json,"
-    : "'' AS name, NULL AS cover_image_data, NULL AS form_theme_json,"
+    ? "a.name, (a.cover_image_data IS NOT NULL) AS has_cover_image, a.form_theme_json,"
+    : "'' AS name, FALSE AS has_cover_image, NULL AS form_theme_json,"
 
   return `SELECT
     q.id AS qr_id,
@@ -193,7 +224,7 @@ function surveySessionQuery() {
     ss.activity_id,
     ss.student_id,
     a.name AS activity_name,
-    a.assessment_image_data AS activity_image_data,
+    (a.assessment_image_data IS NOT NULL) AS has_assessment_image,
     a.form_theme_json,
     a.survey_template_id,
     ss.phase,
@@ -206,10 +237,16 @@ function surveySessionQuery() {
       WHEN q.phase = 'post' AND a.post_test_enabled = FALSE THEN 'not_open'
       ELSE 'open'
     END AS window_status
-   FROM survey_sessions ss
+   FROM (
+     SELECT id AS survey_session_id FROM survey_sessions WHERE session_hash = ?
+     UNION ALL
+     SELECT survey_session_id FROM survey_session_access_tokens WHERE session_hash = ?
+   ) authenticated_session
+   JOIN survey_sessions ss ON ss.id = authenticated_session.survey_session_id
    JOIN qr_codes q ON q.id = ss.qr_code_id
    JOIN activities a ON a.id = ss.activity_id
-   WHERE q.token = ? AND ss.session_hash = ? AND ss.expires_at > NOW()
+   WHERE q.token = ?
+     AND ss.expires_at > NOW()
    LIMIT 1`
 }
 
@@ -229,6 +266,59 @@ function ensureDatabaseAvailable() {
 
 function sessionHash(value: string) {
   return crypto.createHash('sha256').update(value).digest('hex')
+}
+
+function surveyMediaUrl(token: string, kind: SurveyMediaKind) {
+  return `/api/public/surveys/${token}/media/${kind}`
+}
+
+function decodeSurveyMedia(imageData: string | null): SurveyMedia | null {
+  if (!imageData) return null
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,([a-z0-9+/=]+)$/i.exec(imageData)
+  if (!match?.[1] || !match[2]) return null
+  const body = Buffer.from(match[2], 'base64')
+  if (!body.length) return null
+  return {
+    body,
+    contentType: match[1].toLowerCase(),
+    etag: `"${crypto.createHash('sha256').update(body).digest('hex')}"`,
+  }
+}
+
+async function loadSurveyMedia(token: string, kind: SurveyMediaKind) {
+  const key = `${token}:${kind}`
+  const cached = surveyMediaCache.get(key)
+  if (cached && cached.expiresAt > Date.now()) {
+    surveyMediaCache.delete(key)
+    surveyMediaCache.set(key, cached)
+    return cached.media
+  }
+  surveyMediaCache.delete(key)
+
+  const pending = surveyMediaLoads.get(key)
+  if (pending) return pending
+
+  const column = kind === 'cover' ? 'a.cover_image_data' : 'a.assessment_image_data'
+  const load = (async () => {
+    const rows = await pool.query<Array<{ image_data: string | null }>>(
+      `SELECT ${column} AS image_data
+       FROM qr_codes q
+       JOIN activities a ON a.id = q.activity_id
+       WHERE q.token = ? AND q.revoked_at IS NULL AND a.status <> 'archived'
+       LIMIT 1`,
+      [token],
+    )
+    const media = decodeSurveyMedia(rows[0]?.image_data ?? null)
+    surveyMediaCache.set(key, { expiresAt: Date.now() + surveyMediaCacheTtlMs, media })
+    while (surveyMediaCache.size > surveyMediaCacheLimit) {
+      const oldestKey = surveyMediaCache.keys().next().value as string | undefined
+      if (!oldestKey) break
+      surveyMediaCache.delete(oldestKey)
+    }
+    return media
+  })().finally(() => surveyMediaLoads.delete(key))
+  surveyMediaLoads.set(key, load)
+  return load
 }
 
 function ensureOpenSurveySession(session: SurveySessionRow | undefined) {
@@ -269,11 +359,16 @@ async function lockOpenSurveySession(
   if (!survey.survey_template_id) throw new ApiError(409, 'กิจกรรมนี้ยังไม่ได้กำหนดแบบประเมิน')
 
   const candidateRows = await connection.query<LockedSurveySessionRow[]>(
-    `SELECT id AS session_id, student_id
-     FROM survey_sessions
-     WHERE session_hash = ? AND qr_code_id = ? AND activity_id = ? AND phase = ? AND expires_at > NOW()
+    `SELECT ss.id AS session_id, ss.student_id
+     FROM (
+       SELECT id AS survey_session_id FROM survey_sessions WHERE session_hash = ?
+       UNION ALL
+       SELECT survey_session_id FROM survey_session_access_tokens WHERE session_hash = ?
+     ) authenticated_session
+     JOIN survey_sessions ss ON ss.id = authenticated_session.survey_session_id
+     WHERE ss.qr_code_id = ? AND ss.activity_id = ? AND ss.phase = ? AND ss.expires_at > NOW()
      LIMIT 1`,
-    [hashedSession, survey.qr_id, survey.activity_id, survey.phase],
+    [hashedSession, hashedSession, survey.qr_id, survey.activity_id, survey.phase],
   )
   const candidate = candidateRows[0]
   if (!candidate) throw new ApiError(401, 'เซสชันแบบประเมินไม่ถูกต้องหรือหมดอายุ')
@@ -285,11 +380,17 @@ async function lockOpenSurveySession(
   if (!studentRows[0]) throw new ApiError(401, 'เซสชันแบบประเมินไม่ถูกต้องหรือหมดอายุ')
 
   const sessionRows = await connection.query<LockedSurveySessionRow[]>(
-    `SELECT id AS session_id, student_id
-     FROM survey_sessions
-     WHERE id = ? AND session_hash = ? AND qr_code_id = ? AND activity_id = ? AND phase = ? AND expires_at > NOW()
+    `SELECT ss.id AS session_id, ss.student_id
+     FROM (
+       SELECT id AS survey_session_id FROM survey_sessions WHERE session_hash = ?
+       UNION ALL
+       SELECT survey_session_id FROM survey_session_access_tokens WHERE session_hash = ?
+     ) authenticated_session
+     JOIN survey_sessions ss ON ss.id = authenticated_session.survey_session_id
+     WHERE ss.id = ?
+       AND ss.qr_code_id = ? AND ss.activity_id = ? AND ss.phase = ? AND ss.expires_at > NOW()
      LIMIT 1 FOR UPDATE`,
-    [candidate.session_id, hashedSession, survey.qr_id, survey.activity_id, survey.phase],
+    [hashedSession, hashedSession, candidate.session_id, survey.qr_id, survey.activity_id, survey.phase],
   )
   const session = sessionRows[0]
   if (!session) throw new ApiError(401, 'เซสชันแบบประเมินไม่ถูกต้องหรือหมดอายุ')
@@ -376,9 +477,9 @@ function serializeResultAnswers(rows: ResultAnswerRow[]) {
   }))
 }
 
-function serializeSurvey(survey: SurveyRow) {
+function serializeSurvey(survey: SurveyRow, token: string) {
   return {
-    activity: { id: Number(survey.activity_id), name: survey.name, imageData: survey.cover_image_data, formTheme: parseStoredFormTheme(survey.form_theme_json) },
+    activity: { id: Number(survey.activity_id), name: survey.name, imageData: survey.has_cover_image ? surveyMediaUrl(token, 'cover') : null, formTheme: parseStoredFormTheme(survey.form_theme_json) },
     phase: survey.phase,
     status: survey.window_status as Exclude<SurveyStatus, 'invalid'>,
   }
@@ -386,19 +487,40 @@ function serializeSurvey(survey: SurveyRow) {
 
 export const publicSurveyRouter = Router()
 
+publicSurveyRouter.get('/:token/media/:kind', async (request, response) => {
+  const token = surveyTokenSchema.parse(request.params.token ?? '')
+  const kind = z.enum(['cover', 'assessment']).parse(request.params.kind) as SurveyMediaKind
+  ensureDatabaseAvailable()
+  const media = await loadSurveyMedia(token, kind)
+  if (!media) throw new ApiError(404, 'ไม่พบรูปกิจกรรม')
+  response.setHeader('Content-Type', media.contentType)
+  response.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60')
+  response.setHeader('ETag', media.etag)
+  if (request.get('if-none-match') === media.etag) {
+    response.status(304).end()
+    return
+  }
+  response.send(media.body)
+})
+
 publicSurveyRouter.get('/:token', async (request, response) => {
   const token = surveyTokenSchema.parse(request.params.token ?? '')
   ensureDatabaseAvailable()
   const survey = ensureReadableSurvey(await findSurvey(token))
-  response.json(serializeSurvey(survey))
+  response.json(serializeSurvey(survey, token))
 })
 
 publicSurveyRouter.post('/:token/identify', async (request, response) => {
   const token = surveyTokenSchema.parse(request.params.token ?? '')
   ensureDatabaseAvailable()
   const input = identifySchema.parse(request.body)
-  limitIdentifyAttempts(token, input.studentCode)
-  const connection = await pool.getConnection()
+  const clientIp = request.ip ?? 'unknown'
+  limitIdentifyTraffic(token, clientIp)
+  const attemptKey = limitIdentifyAttempts(token, input.studentCode, clientIp)
+  const connection = await pool.getConnection().catch((error: unknown) => {
+    identifyAttempts.delete(attemptKey)
+    throw error
+  })
 
   try {
     await connection.beginTransaction()
@@ -426,6 +548,7 @@ publicSurveyRouter.post('/:token/identify', async (request, response) => {
       const hasRegistrationDetails = input.firstName !== undefined && input.lastName !== undefined && input.faculty !== undefined && input.major !== undefined && input.studyYear !== undefined && input.email !== undefined && input.phone !== undefined && input.pdpaConsented !== undefined
       if (!hasRegistrationDetails) {
         await connection.commit()
+        identifyAttempts.delete(attemptKey)
         response.json({ next: 'registration' })
         return
       }
@@ -461,6 +584,7 @@ publicSurveyRouter.post('/:token/identify', async (request, response) => {
         [sessionHash(surveySession), survey.qr_id, survey.activity_id, studentId, survey.phase, expiresAt],
       )
       await connection.commit()
+      identifyAttempts.delete(attemptKey)
       response.json({ next: 'result', alreadySubmitted: true, resumed: false, surveySession, expiresAt: expiresAt.toISOString() })
       return
     }
@@ -484,10 +608,24 @@ publicSurveyRouter.post('/:token/identify', async (request, response) => {
       }
       const surveySession = crypto.randomBytes(32).toString('hex')
       await connection.query(
-        'UPDATE survey_sessions SET session_hash = ?, qr_code_id = ? WHERE id = ?',
-        [sessionHash(surveySession), survey.qr_id, previousSession.id],
+        'INSERT INTO survey_session_access_tokens (survey_session_id, session_hash) VALUES (?, ?)',
+        [previousSession.id, sessionHash(surveySession)],
       )
+      await connection.query(
+        `DELETE FROM survey_session_access_tokens
+         WHERE survey_session_id = ? AND id NOT IN (
+           SELECT id FROM (
+             SELECT id FROM survey_session_access_tokens
+             WHERE survey_session_id = ?
+             ORDER BY id DESC
+             LIMIT ?
+           ) recent_tokens
+         )`,
+        [previousSession.id, previousSession.id, maxSurveySessionAliases],
+      )
+      await connection.query('UPDATE survey_sessions SET qr_code_id = ? WHERE id = ?', [survey.qr_id, previousSession.id])
       await connection.commit()
+      identifyAttempts.delete(attemptKey)
       response.json({ next: 'assessment', alreadySubmitted: false, resumed: true, surveySession, expiresAt: expiresAt.toISOString() })
       return
     }
@@ -500,8 +638,12 @@ publicSurveyRouter.post('/:token/identify', async (request, response) => {
       [sessionHash(surveySession), survey.qr_id, survey.activity_id, studentId, survey.phase, expiresAt],
     )
     await connection.commit()
+    identifyAttempts.delete(attemptKey)
     response.json({ next: 'assessment', alreadySubmitted: false, resumed: false, surveySession, expiresAt: expiresAt.toISOString() })
   } catch (error) {
+    if (!(error instanceof z.ZodError) && !(error instanceof ApiError && error.status < 500)) {
+      identifyAttempts.delete(attemptKey)
+    }
     await connection.rollback()
     throw error
   } finally {
@@ -513,7 +655,8 @@ publicSurveyRouter.get('/:token/result', async (request, response) => {
   const token = surveyTokenSchema.parse(request.params.token ?? '')
   const surveySession = surveySessionSchema.parse(request.get('x-survey-session') ?? '')
   ensureDatabaseAvailable()
-  const sessionRows = await pool.query<SurveySessionRow[]>(surveySessionQuery(), [token, sessionHash(surveySession)])
+  const hashedSession = sessionHash(surveySession)
+  const sessionRows = await pool.query<SurveySessionRow[]>(surveySessionQuery(), [hashedSession, hashedSession, token])
   const session = ensureResultSurveySession(sessionRows[0])
   const responseRows = await pool.query<ResultResponseRow[]>(
     `SELECT id, phase, submitted_at
@@ -541,7 +684,7 @@ publicSurveyRouter.get('/:token/result', async (request, response) => {
   }
 
   response.json({
-    activity: { id: Number(session.activity_id), name: session.activity_name, imageData: session.activity_image_data, formTheme: parseStoredFormTheme(session.form_theme_json) },
+    activity: { id: Number(session.activity_id), name: session.activity_name, imageData: session.has_assessment_image ? surveyMediaUrl(token, 'assessment') : null, formTheme: parseStoredFormTheme(session.form_theme_json) },
     phase: session.phase,
     submittedAt: currentResponse.submitted_at instanceof Date ? currentResponse.submitted_at.toISOString() : currentResponse.submitted_at,
     competencies: answers,
@@ -553,7 +696,8 @@ publicSurveyRouter.post('/:token/portal-session', async (request, response) => {
   const token = surveyTokenSchema.parse(request.params.token ?? '')
   const surveySession = surveySessionSchema.parse(request.get('x-survey-session') ?? '')
   ensureDatabaseAvailable()
-  const sessionRows = await pool.query<SurveySessionRow[]>(surveySessionQuery(), [token, sessionHash(surveySession)])
+  const hashedSession = sessionHash(surveySession)
+  const sessionRows = await pool.query<SurveySessionRow[]>(surveySessionQuery(), [hashedSession, hashedSession, token])
   const session = ensureResultSurveySession(sessionRows[0])
   const submitted = await pool.query<Array<{ id: number }>>(
     `SELECT id
@@ -570,7 +714,8 @@ publicSurveyRouter.get('/:token/questions', async (request, response) => {
   const token = surveyTokenSchema.parse(request.params.token ?? '')
   const surveySession = surveySessionSchema.parse(request.get('x-survey-session') ?? '')
   ensureDatabaseAvailable()
-  const rows = await pool.query<SurveySessionRow[]>(surveySessionQuery(), [token, sessionHash(surveySession)])
+  const hashedSession = sessionHash(surveySession)
+  const rows = await pool.query<SurveySessionRow[]>(surveySessionQuery(), [hashedSession, hashedSession, token])
   const session = ensureOpenSurveySession(rows[0])
   const existingResponses = await pool.query<Array<{ id: number }>>(
     'SELECT id FROM survey_responses WHERE activity_id = ? AND student_id = ? AND phase = ? LIMIT 1',
@@ -587,7 +732,7 @@ publicSurveyRouter.get('/:token/questions', async (request, response) => {
     [session.session_id],
   )
   response.json({
-    activity: { id: Number(session.activity_id), name: session.activity_name, imageData: session.activity_image_data, formTheme: parseStoredFormTheme(session.form_theme_json) },
+    activity: { id: Number(session.activity_id), name: session.activity_name, imageData: session.has_assessment_image ? surveyMediaUrl(token, 'assessment') : null, formTheme: parseStoredFormTheme(session.form_theme_json) },
     phase: session.phase,
     questions,
     draftAnswers: draftRows.map((row) => ({

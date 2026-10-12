@@ -3,7 +3,7 @@ import { ApiError, getPublicSurveyQuestions, savePublicSurveyDraft, submitPublic
 import AssessmentProgress from './AssessmentProgress'
 import CompetencyQuestion from './CompetencyQuestion'
 import { trackUserEvent } from '../../usage/tracker'
-import { getStoredSurveySession, setStoredSurveySessionNext } from './studentSession'
+import { clearStoredSurveySessionIfMatches, getStoredSurveySession, setStoredSurveySessionNext } from './studentSession'
 import { formThemeStyle, studentThemePageClass } from '../../../shared/formTheme'
 import './student-entry.css'
 
@@ -34,6 +34,22 @@ function formatRemainingTime(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 }
 
+function removeInstructionMarker(token: string) {
+  try {
+    window.sessionStorage.removeItem(instructionStorageKey(token))
+  } catch {
+    // Storage can be unavailable in embedded QR and private browsers.
+  }
+}
+
+function saveInstructionMarker(token: string, surveySession: string) {
+  try {
+    window.sessionStorage.setItem(instructionStorageKey(token), surveySession)
+  } catch {
+    // The assessment can continue without persisting this optional marker.
+  }
+}
+
 function StudentAssessmentPage({ token, onNavigate }: StudentAssessmentPageProps) {
   const storedSession = getStoredSurveySession(token)
   const surveySession = storedSession?.next === 'assessment' ? storedSession.surveySession : null
@@ -49,7 +65,13 @@ function StudentAssessmentPage({ token, onNavigate }: StudentAssessmentPageProps
   const [timeRemaining, setTimeRemaining] = useState(() => remainingSeconds(expiresAt))
   const [showInstructions, setShowInstructions] = useState(() => shouldShowInstructions(token, surveySession, resumed))
   const draftSaveQueue = useRef<Promise<void>>(Promise.resolve())
+  const draftQueueInvalidated = useRef(false)
   const trackedQuestionAnswers = useRef(new Set<number>())
+
+  useEffect(() => {
+    draftQueueInvalidated.current = false
+    return () => { draftQueueInvalidated.current = true }
+  }, [surveySession])
 
   useEffect(() => {
     const updateRemainingTime = () => setTimeRemaining(remainingSeconds(expiresAt))
@@ -74,6 +96,11 @@ function StudentAssessmentPage({ token, onNavigate }: StudentAssessmentPageProps
       })
       .catch((requestError) => {
         if (!active) return
+        if (requestError instanceof ApiError && requestError.status === 401) {
+          draftQueueInvalidated.current = true
+          if (surveySession && clearStoredSurveySessionIfMatches(token, surveySession)) onNavigate(`/s/${token}`, true)
+          return
+        }
         if (requestError instanceof ApiError && requestError.status === 409) {
           setStoredSurveySessionNext(token, 'result')
           onNavigate(`/s/${token}/result`, true)
@@ -108,12 +135,17 @@ function StudentAssessmentPage({ token, onNavigate }: StudentAssessmentPageProps
     try {
       await submitPublicSurvey(token, request)
       trackUserEvent('interaction', 'assessment_submitted', { activityId: data.activity.id, phase: data.phase, totalQuestions: data.questions.length })
-      window.sessionStorage.removeItem(instructionStorageKey(token))
+      removeInstructionMarker(token)
       setStoredSurveySessionNext(token, 'result')
       onNavigate(`/s/${token}/result`, true)
     } catch (requestError) {
+      if (requestError instanceof ApiError && requestError.status === 401) {
+        draftQueueInvalidated.current = true
+        if (clearStoredSurveySessionIfMatches(token, surveySession)) onNavigate(`/s/${token}`, true)
+        return
+      }
       if (requestError instanceof ApiError && requestError.status === 409) {
-        window.sessionStorage.removeItem(instructionStorageKey(token))
+        removeInstructionMarker(token)
         setStoredSurveySessionNext(token, 'result')
         onNavigate(`/s/${token}/result`, true)
         return
@@ -160,12 +192,20 @@ function StudentAssessmentPage({ token, onNavigate }: StudentAssessmentPageProps
     }
     draftSaveQueue.current = draftSaveQueue.current
       .catch(() => undefined)
-      .then(() => savePublicSurveyDraft(token, draftAnswer))
-      .catch((requestError) => setError(requestError instanceof Error ? requestError.message : 'ไม่สามารถบันทึกคำตอบชั่วคราวได้'))
+      .then(() => draftQueueInvalidated.current ? undefined : savePublicSurveyDraft(token, draftAnswer))
+      .catch((requestError) => {
+        if (draftQueueInvalidated.current) return
+        if (requestError instanceof ApiError && requestError.status === 401) {
+          draftQueueInvalidated.current = true
+          if (clearStoredSurveySessionIfMatches(token, surveySession)) onNavigate(`/s/${token}`, true)
+          return
+        }
+        setError(requestError instanceof Error ? requestError.message : 'ไม่สามารถบันทึกคำตอบชั่วคราวได้')
+      })
   }
 
   const startAssessment = () => {
-    window.sessionStorage.setItem(instructionStorageKey(token), surveySession)
+    saveInstructionMarker(token, surveySession)
     setShowInstructions(false)
     trackUserEvent('interaction', 'assessment_started', { activityId: data.activity.id, phase: data.phase, totalQuestions: data.questions.length })
   }

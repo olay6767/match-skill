@@ -87,6 +87,14 @@ USER_FRONTEND_URL=https://user-domain.example
 
 ลิงก์รีเซ็ตรหัสผ่านจะใช้ `ADMIN_FRONTEND_URL` ส่วน QR Code จะใช้ `USER_FRONTEND_URL`
 
+ใน production ต้องตั้ง `USER_FRONTEND_URL` เป็นโดเมนหลักที่เปิดให้คนทั่วไปเข้าได้ เช่น
+`https://match-skill-user.vercel.app` ห้ามใช้ Deployment URL, branch URL หรือ team URL ของ
+Vercel เพราะ URL เหล่านั้นอาจพาผู้ที่ไม่ได้ล็อกอินไปหน้า Vercel Authentication แทนหน้าแบบประเมิน
+
+ก่อนดาวน์โหลดและแจก QR ให้เปิด `${USER_FRONTEND_URL}/s/test` ในหน้าต่างไม่ระบุตัวตน ผลที่ถูกต้อง
+คือต้องเห็นหน้า SEDA โดยไม่ถูกส่งไป `vercel.com/sso-api` หากเปลี่ยน `USER_FRONTEND_URL` ให้ redeploy
+API และดาวน์โหลด QR ใหม่ เพราะไฟล์ QR ที่ดาวน์โหลดหรือพิมพ์ไปแล้วเก็บ URL เดิมไว้ในรูปภาพ
+
 ตรวจสอบฐานข้อมูลผ่าน API:
 
 ```text

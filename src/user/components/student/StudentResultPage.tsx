@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ApiError, createPublicSurveyPortalSession, getPublicSurveyResult, type PublicSurveyResult } from '../../../lib/api'
 import PersonalSkillChart from './PersonalSkillChart'
 import Icon from '../../../shared/components/ui/Icon'
-import { getStoredSurveySession } from './studentSession'
+import { clearStoredSurveySession, clearStoredSurveySessionIfMatches, getStoredSurveySession } from './studentSession'
 import { formThemeStyle, studentThemePageClass } from '../../../shared/formTheme'
 import { saveStudentPortalSession } from '../userPortal/session'
 import './student-entry.css'
@@ -41,6 +41,7 @@ function StudentResultPage({ token, onNavigate }: StudentResultPageProps) {
       })
       .catch((requestError) => {
         if (!active) return
+        if (requestError instanceof ApiError && requestError.status === 401) clearStoredSurveySessionIfMatches(token, surveySession)
         setError(requestError instanceof Error ? requestError.message : 'ไม่สามารถโหลดผลการประเมินได้')
         setErrorStatus(requestError instanceof ApiError ? requestError.status : null)
       })
@@ -48,11 +49,11 @@ function StudentResultPage({ token, onNavigate }: StudentResultPageProps) {
   }, [reloadNonce, surveySession, token])
 
   if (!surveySession) {
-    return <main className="student-page"><section className="student-state-card"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>เซสชันดูผลหมดอายุ</h1><p>กรุณายืนยันข้อมูลใหม่เพื่อดูผลของคุณ</p><button className="student-primary-button" type="button" onClick={() => onNavigate(`/s/${token}`, true)}>กลับไปยืนยันข้อมูล</button></section></main>
+    return <main className="student-page"><section className="student-state-card"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>เซสชันดูผลหมดอายุ</h1><p>กรุณายืนยันข้อมูลใหม่เพื่อดูผลของคุณ</p><button className="student-primary-button" type="button" onClick={() => { clearStoredSurveySession(token); onNavigate(`/s/${token}`, true) }}>กลับไปยืนยันข้อมูล</button></section></main>
   }
   if (error && !result) {
     const isSessionError = errorStatus === 401
-    return <main className="student-page"><section className="student-state-card"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>{isSessionError ? 'เซสชันดูผลหมดอายุ' : 'โหลดผลการประเมินไม่สำเร็จ'}</h1><p role="alert">{error}</p><button className="student-primary-button" type="button" onClick={() => isSessionError ? onNavigate(`/s/${token}`, true) : setReloadNonce((value) => value + 1)}>{isSessionError ? 'กลับไปยืนยันข้อมูล' : 'ลองใหม่'}</button></section></main>
+    return <main className="student-page"><section className="student-state-card"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>{isSessionError ? 'เซสชันดูผลหมดอายุ' : 'โหลดผลการประเมินไม่สำเร็จ'}</h1><p role="alert">{error}</p><button className="student-primary-button" type="button" onClick={() => { if (isSessionError) { clearStoredSurveySession(token); onNavigate(`/s/${token}`, true) } else setReloadNonce((value) => value + 1) }}>{isSessionError ? 'กลับไปยืนยันข้อมูล' : 'ลองใหม่'}</button></section></main>
   }
   if (!result) return <main className="student-page"><section className="student-state-card" role="status"><img className="student-logo" src="/seda-logo.png" alt="SEDA" /><h1>กำลังโหลดผลการประเมิน</h1><p>โปรดรอสักครู่</p></section></main>
 
@@ -66,6 +67,10 @@ function StudentResultPage({ token, onNavigate }: StudentResultPageProps) {
       saveStudentPortalSession(portalSession)
       onNavigate(`/user/activities/${result.activity.id}`)
     } catch (requestError) {
+      if (requestError instanceof ApiError && requestError.status === 401) {
+        if (clearStoredSurveySessionIfMatches(token, surveySession)) onNavigate(`/s/${token}`, true)
+        return
+      }
       setPortalError(requestError instanceof Error ? requestError.message : 'ไม่สามารถเปิดข้อมูลเพิ่มเติมได้')
     } finally {
       setIsOpeningPortal(false)

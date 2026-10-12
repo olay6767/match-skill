@@ -16,6 +16,7 @@ let pendingActiveSeconds = 0
 let wasVisible = typeof document !== 'undefined' ? !document.hidden : true
 const activeForms = new Map<HTMLFormElement, string>()
 const trackedFormFields = new WeakMap<HTMLFormElement, Set<string>>()
+const memoryStorageIds = new Map<string, string>()
 
 function randomUuid() {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
@@ -25,16 +26,23 @@ function randomUuid() {
   })
 }
 
-function storageId(storage: Storage, key: string) {
+function storageId(storageName: 'sessionStorage' | 'localStorage', key: string) {
+  const cached = memoryStorageIds.get(key)
+  if (cached) return cached
+  const created = randomUuid()
   try {
+    const storage = window[storageName]
     const existing = storage.getItem(key)
-    if (existing) return existing
-    const created = randomUuid()
+    if (existing) {
+      memoryStorageIds.set(key, existing)
+      return existing
+    }
     storage.setItem(key, created)
-    return created
   } catch {
-    return randomUuid()
+    // Accessing the storage property itself can throw in embedded browsers.
   }
+  memoryStorageIds.set(key, created)
+  return created
 }
 
 function safePath(path = window.location.pathname) {
@@ -107,8 +115,8 @@ export function trackUserEvent(eventType: UsageEventType, eventName: string, met
   if (historySession) headers.set('X-Student-History-Session', historySession)
   if (surveySession) headers.set('X-Survey-Session', surveySession)
   const body = {
-    clientSessionId: storageId(sessionStorage, clientSessionIdKey),
-    anonymousId: storageId(localStorage, anonymousIdKey),
+    clientSessionId: storageId('sessionStorage', clientSessionIdKey),
+    anonymousId: storageId('localStorage', anonymousIdKey),
     eventType,
     eventName,
     pagePath: safePath(),

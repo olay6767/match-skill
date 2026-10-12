@@ -39,8 +39,24 @@ const summaryQuerySchema = z.object({
 
 type StudentRow = { student_id: number | string }
 type SessionIdRow = { id: number | string }
+type UsageEventInput = z.infer<typeof usageEventSchema>
+type UsageWriteJob = {
+  input: UsageEventInput
+  ipHash: string | null
+  studentHistorySession: string | null
+  surveySession: string | null
+  userAgent: string
+}
 
 const requestBuckets = new Map<string, { count: number; resetAt: number }>()
+const maxConcurrentUsageWrites = 2
+const maxQueuedUsageWrites = 5_000
+const usageWriteQueue: UsageWriteJob[] = []
+const activeClientSessions = new Set<string>()
+const usageIdleListeners = new Set<() => void>()
+let activeUsageWrites = 0
+let acceptingUsageWrites = true
+let nextBucketCleanupAt = 0
 
 function safePath(path: string) {
   const withoutQuery = path.split(/[?#]/, 1)[0] || '/'
@@ -57,8 +73,15 @@ function hmacIp(request: Request) {
 
 function enforceRateLimit(key: string) {
   const now = Date.now()
+  if (now >= nextBucketCleanupAt) {
+    for (const [bucketKey, bucket] of requestBuckets) {
+      if (bucket.resetAt <= now) requestBuckets.delete(bucketKey)
+    }
+    nextBucketCleanupAt = now + 60_000
+  }
   const bucket = requestBuckets.get(key)
   if (!bucket || bucket.resetAt <= now) {
+    if (!bucket && requestBuckets.size >= 10_000) return false
     requestBuckets.set(key, { count: 1, resetAt: now + 60_000 })
     return true
   }
@@ -83,8 +106,8 @@ function clientDevice(userAgent = '') {
   return { browserName, operatingSystem, deviceCategory }
 }
 
-async function optionalStudentId(request: Request) {
-  const studentHistorySession = request.get('x-student-history-session')
+async function optionalStudentId(job: UsageWriteJob) {
+  const { studentHistorySession } = job
   if (studentHistorySession && /^[a-f0-9]{64}$/.test(studentHistorySession)) {
     const rows = await pool.query<StudentRow[]>(
       'SELECT student_id FROM student_history_sessions WHERE token_hash = ? AND expires_at > NOW() LIMIT 1',
@@ -93,38 +116,35 @@ async function optionalStudentId(request: Request) {
     if (rows[0]) return Number(rows[0].student_id)
   }
 
-  const surveySession = request.get('x-survey-session')
+  const { surveySession } = job
   if (surveySession && /^[a-f0-9]{64}$/.test(surveySession)) {
+    const hashedSession = hashStudentSession(surveySession)
     const rows = await pool.query<StudentRow[]>(
-      'SELECT student_id FROM survey_sessions WHERE session_hash = ? AND expires_at > NOW() LIMIT 1',
-      [hashStudentSession(surveySession)],
+      `SELECT ss.student_id
+       FROM (
+         SELECT id AS survey_session_id FROM survey_sessions WHERE session_hash = ?
+         UNION ALL
+         SELECT survey_session_id FROM survey_session_access_tokens WHERE session_hash = ?
+       ) authenticated_session
+       JOIN survey_sessions ss ON ss.id = authenticated_session.survey_session_id
+       WHERE ss.expires_at > NOW()
+       LIMIT 1`,
+      [hashedSession, hashedSession],
     )
     if (rows[0]) return Number(rows[0].student_id)
   }
   return null
 }
 
-export const userUsageRouter = Router()
-
-userUsageRouter.post('/events', async (request, response) => {
-  const input = usageEventSchema.parse(request.body)
-  if (!isDatabaseAvailable()) {
-    response.status(202).json({ accepted: false })
-    return
-  }
-  const ipHash = hmacIp(request)
-  if (!enforceRateLimit(`${ipHash ?? 'unknown'}:${input.clientSessionId}`)) {
-    response.status(202).json({ accepted: false })
-    return
-  }
-
-  const studentId = await optionalStudentId(request)
+async function persistUsageEvent(job: UsageWriteJob) {
+  const { input, ipHash } = job
+  const studentId = await optionalStudentId(job)
   const path = safePath(input.pagePath)
   const occurredAt = new Date(input.occurredAt)
   const endedAt = input.eventType === 'session' && input.eventName === 'end' ? occurredAt : null
   const pageViewIncrement = input.eventType === 'page_view' ? 1 : 0
   const interactionIncrement = input.eventType === 'interaction' ? 1 : 0
-  const device = clientDevice(request.get('user-agent'))
+  const device = clientDevice(job.userAgent)
   const connection = await pool.getConnection()
   try {
     await connection.beginTransaction()
@@ -168,13 +188,95 @@ userUsageRouter.post('/events', async (request, response) => {
       ],
     )
     await connection.commit()
-    response.status(202).json({ accepted: true })
   } catch (error) {
     await connection.rollback()
     throw error
   } finally {
     connection.release()
   }
+}
+
+function drainUsageWriteQueue() {
+  while (activeUsageWrites < maxConcurrentUsageWrites && usageWriteQueue.length > 0) {
+    // Preserve arrival order within one browser session while other sessions
+    // can use the second writer. Otherwise an older event can replace last_path.
+    const jobIndex = usageWriteQueue.findIndex((job) => !activeClientSessions.has(job.input.clientSessionId))
+    if (jobIndex < 0) return
+    const [job] = usageWriteQueue.splice(jobIndex, 1)
+    if (!job) return
+    activeUsageWrites += 1
+    activeClientSessions.add(job.input.clientSessionId)
+    void runUsageWrite(job)
+  }
+  if (activeUsageWrites === 0 && usageWriteQueue.length === 0) {
+    for (const notifyIdle of usageIdleListeners) notifyIdle()
+  }
+}
+
+async function runUsageWrite(job: UsageWriteJob) {
+  try {
+    await persistUsageEvent(job)
+  } catch (error) {
+    console.error('Unable to persist queued user usage event:', error)
+  } finally {
+    activeUsageWrites -= 1
+    activeClientSessions.delete(job.input.clientSessionId)
+    drainUsageWriteQueue()
+  }
+}
+
+function enqueueUsageWrite(job: UsageWriteJob) {
+  if (!acceptingUsageWrites || usageWriteQueue.length >= maxQueuedUsageWrites) return false
+  usageWriteQueue.push(job)
+  drainUsageWriteQueue()
+  return true
+}
+
+export async function drainUserUsageWrites(timeoutMs = 8_000): Promise<boolean> {
+  acceptingUsageWrites = false
+  if (activeUsageWrites === 0 && usageWriteQueue.length === 0) return true
+  return new Promise((resolve) => {
+    const onIdle = () => {
+      clearTimeout(timeout)
+      usageIdleListeners.delete(onIdle)
+      resolve(true)
+    }
+    const timeout = setTimeout(() => {
+      usageIdleListeners.delete(onIdle)
+      // Do not start more work after the caller closes the database pool.
+      usageWriteQueue.length = 0
+      resolve(false)
+    }, Math.max(0, timeoutMs))
+    usageIdleListeners.add(onIdle)
+  })
+}
+
+function capturedSessionHeader(request: Request, name: string) {
+  const value = request.get(name)
+  return value && /^[a-f0-9]{64}$/.test(value) ? value : null
+}
+
+export const userUsageRouter = Router()
+
+userUsageRouter.post('/events', async (request, response) => {
+  const input = usageEventSchema.parse(request.body)
+  const ipHash = hmacIp(request)
+  if (!enforceRateLimit(`${ipHash ?? 'unknown'}:${input.clientSessionId}`)) {
+    response.status(202).json({ accepted: false })
+    return
+  }
+  const accepted = enqueueUsageWrite({
+    input,
+    ipHash,
+    studentHistorySession: capturedSessionHeader(request, 'x-student-history-session'),
+    surveySession: capturedSessionHeader(request, 'x-survey-session'),
+    userAgent: (request.get('user-agent') ?? '').slice(0, 1_024),
+  })
+  if (!accepted) {
+    response.status(202).json({ accepted: false })
+    return
+  }
+  response.status(202).json({ accepted: true })
 })
 
 userUsageRouter.get('/summary', requireAdmin, async (request, response) => {
